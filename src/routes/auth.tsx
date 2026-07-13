@@ -35,12 +35,18 @@ const GoogleIcon = () => (
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { session, loading } = useAuth();
+  const { session, loading, isAdmin } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && session) navigate({ to: "/dashboard", replace: true });
-  }, [loading, session, navigate]);
+    if (!loading && session) {
+      if (isAdmin) {
+        navigate({ to: "/admin", replace: true });
+      } else {
+        navigate({ to: "/dashboard", replace: true });
+      }
+    }
+  }, [loading, session, isAdmin, navigate]);
 
   // ---- Login state ----
   const [loginEmail, setLoginEmail] = useState("");
@@ -66,7 +72,6 @@ function AuthPage() {
       return;
     }
     toast.success("Welcome back!");
-    navigate({ to: "/dashboard" });
   }
 
   async function handleRegister(e: React.FormEvent) {
@@ -108,7 +113,6 @@ function AuthPage() {
       return;
     }
     toast.success("Account created! You're all set.");
-    navigate({ to: "/dashboard" });
   }
 
   async function handleGoogle() {
@@ -122,7 +126,6 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/dashboard" });
   }
 
   return (
