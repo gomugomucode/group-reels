@@ -26,10 +26,33 @@ import {
   Check,
   X,
   RefreshCw,
+  TrendingUp,
+  Eye,
+  Heart,
+  MessageSquare,
+  Sparkles,
+  Calendar,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as ChartTooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/hooks/use-auth";
-import { useGroup, useVideoLinks, useGroupMembers, type VideoLink, type GroupMember } from "@/hooks/use-data";
+import {
+  useGroup,
+  useVideoLinks,
+  useGroupMembers,
+  useGroupAnalyticsSummary,
+  useGroupMetricsHistory,
+  type VideoLink,
+  type GroupMember,
+} from "@/hooks/use-data";
 import { supabase } from "@/integrations/supabase/client";
 import { GroupForm } from "@/components/group-form";
 import { VideoLinkDialog } from "@/components/video-link-dialog";
@@ -65,6 +88,13 @@ import {
   removeMember,
   transferOwnership,
 } from "@/lib/group-collaboration.functions";
+import { syncGroupAnalytics } from "@/lib/analytics.functions";
+
+import { VideoThumbnail } from "@/components/video-thumbnail";
+import { VideoStatsBadge } from "@/components/video-stats-badge";
+import { SyncStatusBadge } from "@/components/sync-status-badge";
+import { RefreshButton } from "@/components/refresh-button";
+import { formatCount } from "@/lib/youtube";
 
 export const Route = createFileRoute("/_authenticated/groups/$id")({
   component: GroupDetailPage,
@@ -298,16 +328,21 @@ function GroupDetailPage() {
   const qc = useQueryClient();
   const { user, isAdmin } = useAuth();
 
+  // Queries
   const { data: group, isLoading } = useGroup(id);
   const { data: videos = [] } = useVideoLinks(id);
   const { data: members = [], isLoading: membersLoading } = useGroupMembers(id);
+  const { data: analyticsSummary, isLoading: summaryLoading } = useGroupAnalyticsSummary(id);
+  const { data: historyData = [] } = useGroupMetricsHistory(id);
 
+  // Local UI states
   const [editing, setEditing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editLink, setEditLink] = useState<VideoLink | null>(null);
   const [search, setSearch] = useState("");
   const [platform, setPlatform] = useState("all");
   const [status, setStatus] = useState("all");
+  const [groupSyncing, setGroupSyncing] = useState(false);
 
   // Permission checks
   const isOwner = !!group && group.created_by === user?.id;
@@ -319,6 +354,7 @@ function GroupDetailPage() {
   const canEditLink = (link: VideoLink) =>
     canManage || (!!myMembership && link.created_by === user?.id);
 
+  // Filtering video links
   const filtered = useMemo(() => {
     return videos.filter((v) => {
       const matchSearch =
@@ -331,11 +367,103 @@ function GroupDetailPage() {
     });
   }, [videos, search, platform, status]);
 
+  // Compute Top Performing Video
+  const topVideo = useMemo(() => {
+    if (!videos || videos.length === 0) return null;
+    const validYoutube = videos.filter(
+      (v) => v.platform === "youtube" && v.last_view_count !== null,
+    );
+    if (validYoutube.length === 0) return null;
+    return validYoutube.reduce((prev, curr) => {
+      const prevViews = prev.last_view_count ?? 0;
+      const currViews = curr.last_view_count ?? 0;
+      return currViews > prevViews ? curr : prev;
+    });
+  }, [videos]);
+
+  // Compute Newest Video
+  const newestVideo = useMemo(() => {
+    if (!videos || videos.length === 0) return null;
+    const validYoutube = videos.filter(
+      (v) => v.platform === "youtube" && v.published_at !== null,
+    );
+    if (validYoutube.length === 0) return null;
+    return validYoutube.reduce((prev, curr) => {
+      const prevTime = new Date(prev.published_at!).getTime();
+      const currTime = new Date(curr.published_at!).getTime();
+      return currTime > prevTime ? curr : prev;
+    });
+  }, [videos]);
+
+  // Daily View Aggregator for Growth Chart
+  const growthChartData = useMemo(() => {
+    if (!historyData || historyData.length === 0) return [];
+
+    // 1. Group values by date string and video ID
+    const dayMap: Record<string, Record<string, number>> = {};
+    const dateSorted = [...historyData].sort(
+      (a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime(),
+    );
+
+    dateSorted.forEach((h: any) => {
+      const dateKey = new Date(h.recorded_at).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      });
+      if (!dayMap[dateKey]) {
+        dayMap[dateKey] = {};
+      }
+      dayMap[dateKey][h.video_link_id] = h.views;
+    });
+
+    // 2. Rolling sum across sorted dates
+    const dates = Object.keys(dayMap);
+    const lastSeenViews: Record<string, number> = {};
+
+    return dates.map((date) => {
+      const dayRecord = dayMap[date];
+      Object.keys(dayRecord).forEach((vid) => {
+        lastSeenViews[vid] = dayRecord[vid];
+      });
+
+      const totalViews = Object.values(lastSeenViews).reduce((sum, v) => sum + v, 0);
+
+      return {
+        date,
+        views: totalViews,
+      };
+    });
+  }, [historyData]);
+
   // Server functions
   const cancelFn = useServerFn(cancelInvitation);
   const resendFn = useServerFn(resendInvitation);
   const removeFn = useServerFn(removeMember);
   const transferFn = useServerFn(transferOwnership);
+  const syncGroupFn = useServerFn(syncGroupAnalytics);
+
+  const handleGroupSync = async () => {
+    if (!canManage || groupSyncing) return;
+    setGroupSyncing(true);
+    const toastId = toast.loading("Updating all group video analytics...");
+    try {
+      const res = await syncGroupFn({ data: { groupId: id, force: true } });
+      if (res.ok) {
+        toast.success(`Successfully updated group analytics (${res.succeeded} succeeded)`, {
+          id: toastId,
+        });
+        qc.invalidateQueries({ queryKey: ["video-links", id] });
+        qc.invalidateQueries({ queryKey: ["group-analytics-summary", id] });
+        qc.invalidateQueries({ queryKey: ["group-metrics-history", id] });
+      } else {
+        toast.error("Failed to sync group analytics", { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error(err.message || "An error occurred during synchronization", { id: toastId });
+    } finally {
+      setGroupSyncing(false);
+    }
+  };
 
   const handleCancel = async (memberId: string) => {
     try {
@@ -385,6 +513,7 @@ function GroupDetailPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["video-links", id] });
       qc.invalidateQueries({ queryKey: ["video-links-all"] });
+      qc.invalidateQueries({ queryKey: ["group-analytics-summary", id] });
       toast.success("Video link deleted");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -404,7 +533,7 @@ function GroupDetailPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) {
+  if (isLoading || summaryLoading) {
     return (
       <AppLayout>
         <Skeleton className="h-64 rounded-2xl" />
@@ -439,9 +568,23 @@ function GroupDetailPage() {
 
   return (
     <AppLayout>
-      <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate({ to: "/dashboard" })}>
-        <ArrowLeft className="mr-1 size-4" /> Back
-      </Button>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/dashboard" })}>
+          <ArrowLeft className="mr-1 size-4" /> Back
+        </Button>
+        {canManage && (
+          <Button
+            size="sm"
+            onClick={handleGroupSync}
+            disabled={groupSyncing}
+            variant="outline"
+            className="gap-1.5"
+          >
+            <RefreshCw className={`size-3.5 ${groupSyncing ? "animate-spin" : ""}`} />
+            <span>Sync Group Analytics</span>
+          </Button>
+        )}
+      </div>
 
       {editing && canManage ? (
         <>
@@ -535,20 +678,128 @@ function GroupDetailPage() {
             )}
           </div>
 
-          {/* ── Stats Row ─────────────────────────────────────── */}
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <StatCard label="Total videos" value={videos.length} icon={<Youtube className="size-4" />} accent />
+          {/* ── Real Platform Stats Row ─────────────────────── */}
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard
-              label="Valid"
-              value={videos.filter((v) => v.status === "valid").length}
-              icon={<ExternalLink className="size-4" />}
+              label="Total Views"
+              value={formatCount(analyticsSummary?.total_views ?? 0)}
+              icon={<Eye className="size-4" />}
+              accent
             />
             <StatCard
-              label="Invalid"
-              value={videos.filter((v) => v.status === "invalid").length}
-              icon={<Ban className="size-4" />}
+              label="Total Likes"
+              value={formatCount(analyticsSummary?.total_likes ?? 0)}
+              icon={<Heart className="size-4" />}
+            />
+            <StatCard
+              label="Total Comments"
+              value={formatCount(analyticsSummary?.total_comments ?? 0)}
+              icon={<MessageSquare className="size-4" />}
             />
           </div>
+
+          {/* ── Extended Highlight Highlights Grid ──────────── */}
+          {(topVideo || newestVideo) && (
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
+              {topVideo && (
+                <div className="rounded-2xl border border-border bg-card p-5 flex flex-col justify-between">
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-semibold text-warning border border-warning/20">
+                      <Sparkles className="size-3" /> Top Performing Video
+                    </span>
+                    <h3 className="mt-3 font-semibold line-clamp-1">{topVideo.title || "Untitled Video"}</h3>
+                    <p className="text-xs text-muted-foreground mt-1 truncate">
+                      Channel: {topVideo.channel_name || "Unknown"}
+                    </p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Eye className="size-3" /> {formatCount(topVideo.last_view_count)} views
+                    </span>
+                    <a
+                      href={topVideo.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-primary font-medium hover:underline flex items-center gap-0.5"
+                    >
+                      Watch <ExternalLink className="size-3" />
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {newestVideo && (
+                <div className="rounded-2xl border border-border bg-card p-5 flex flex-col justify-between">
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-semibold text-primary border border-primary/20">
+                      <Calendar className="size-3" /> Newest Upload
+                    </span>
+                    <h3 className="mt-3 font-semibold line-clamp-1">{newestVideo.title || "Untitled Video"}</h3>
+                    <p className="text-xs text-muted-foreground mt-1 truncate">
+                      Uploaded by: {newestVideo.channel_name || "Unknown"}
+                    </p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+                    <span className="text-xs text-muted-foreground">
+                      Published {newestVideo.published_at ? new Date(newestVideo.published_at).toLocaleDateString() : "unknown"}
+                    </span>
+                    <a
+                      href={newestVideo.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-primary font-medium hover:underline flex items-center gap-0.5"
+                    >
+                      Watch <ExternalLink className="size-3" />
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Growth Chart ────────────────────────────────── */}
+          {growthChartData.length > 0 && (
+            <div className="mt-6 rounded-2xl border border-border bg-card p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <TrendingUp className="size-4 text-primary" /> Views Growth
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Cumulative views over time across group videos</p>
+                </div>
+              </div>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={growthChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                    <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={11} />
+                    <YAxis
+                      stroke="var(--color-muted-foreground)"
+                      fontSize={11}
+                      tickFormatter={(v) => formatCount(v)}
+                    />
+                    <ChartTooltip
+                      contentStyle={{
+                        background: "var(--color-popover)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: 12,
+                        color: "var(--color-popover-foreground)",
+                      }}
+                      formatter={(v: any) => [`${v.toLocaleString()} views`, "Total Views"]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="views"
+                      stroke="var(--color-primary)"
+                      strokeWidth={2.5}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
           {/* ── Team Members Panel ────────────────────────────── */}
           <div className="mt-6 rounded-2xl border border-border bg-card">
@@ -599,7 +850,7 @@ function GroupDetailPage() {
             </div>
           </div>
 
-          {/* ── Video Links Panel ─────────────────────────────── */}
+          {/* ── Video Links Panel with Thumbnails & Stats ── */}
           <div className="mt-6 rounded-2xl border border-border bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
               <h2 className="text-lg font-semibold">Video links</h2>
@@ -662,43 +913,82 @@ function GroupDetailPage() {
                 </p>
               ) : (
                 filtered.map((v) => (
-                  <div key={v.id} className="flex flex-wrap items-center gap-3 p-4">
+                  <div key={v.id} className="flex flex-wrap items-center gap-4 p-4">
+                    {/* Video thumbnail and small platform overlay */}
+                    <VideoThumbnail
+                      thumbnailUrl={v.thumbnail_url}
+                      platform={v.platform}
+                      title={v.title}
+                    />
+
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{v.title || "Untitled video"}</p>
-                      <a
-                        href={v.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 truncate text-sm text-muted-foreground hover:text-foreground"
-                      >
-                        {v.url}
-                        <ExternalLink className="size-3 shrink-0" />
-                      </a>
-                    </div>
-                    <PlatformBadge platform={v.platform} />
-                    <StatusBadge status={v.status} />
-                    {canEditLink(v) && (
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setEditLink(v);
-                            setDialogOpen(true);
-                          }}
+                      <p className="font-semibold text-foreground truncate">{v.title || "Untitled video"}</p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-muted-foreground">
+                        {v.channel_name && <span>{v.channel_name}</span>}
+                        {v.channel_name && <span>•</span>}
+                        <a
+                          href={v.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 hover:text-foreground truncate"
                         >
-                          <Pencil className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive"
-                          onClick={() => deleteLink.mutate(v.id)}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
+                          {v.url}
+                          <ExternalLink className="size-3 shrink-0" />
+                        </a>
                       </div>
-                    )}
+                      
+                      {/* Metric summary counters */}
+                      <VideoStatsBadge
+                        views={v.last_view_count}
+                        likes={v.last_like_count}
+                        comments={v.last_comment_count}
+                        className="mt-2"
+                      />
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                      <SyncStatusBadge
+                        status={v.sync_status}
+                        apiError={v.api_error}
+                        lastSynced={v.last_synced}
+                      />
+                      
+                      <div className="flex items-center gap-1">
+                        {/* Refresh Button */}
+                        {v.platform === "youtube" && (
+                          <RefreshButton
+                            videoLinkId={v.id}
+                            groupId={id}
+                            lastFetchedAt={v.last_fetched_at}
+                            syncStatus={v.sync_status}
+                            canRefresh={canEditLink(v)}
+                          />
+                        )}
+
+                        {canEditLink(v) && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditLink(v);
+                                setDialogOpen(true);
+                              }}
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:bg-destructive/10"
+                              onClick={() => deleteLink.mutate(v.id)}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))
               )}

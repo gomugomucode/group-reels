@@ -158,3 +158,97 @@ export function usePendingInvitations(email: string | undefined) {
   });
 }
 
+export type GroupAnalyticsSummary = Database["public"]["Views"]["group_analytics_summary"]["Row"];
+export type TopVideoRow = Database["public"]["Views"]["top_videos"]["Row"];
+export type VideoMetricsHistory = Database["public"]["Tables"]["video_metrics_history"]["Row"];
+
+export function useVideoMetricsHistory(videoLinkId: string | undefined) {
+  return useQuery({
+    queryKey: ["video-metrics-history", videoLinkId],
+    enabled: !!videoLinkId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("video_metrics_history")
+        .select("*")
+        .eq("video_link_id", videoLinkId!)
+        .order("recorded_at", { ascending: true });
+      if (error) throw error;
+      return data as VideoMetricsHistory[];
+    },
+  });
+}
+
+export function useGroupAnalyticsSummary(groupId: string | undefined) {
+  return useQuery({
+    queryKey: ["group-analytics-summary", groupId],
+    enabled: !!groupId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("group_analytics_summary")
+        .select("*")
+        .eq("group_id", groupId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as GroupAnalyticsSummary | null;
+    },
+  });
+}
+
+export function useAdminAnalyticsSummary() {
+  return useQuery({
+    queryKey: ["admin-analytics-summary"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("group_analytics_summary")
+        .select("*");
+      if (error) throw error;
+      return data as GroupAnalyticsSummary[];
+    },
+  });
+}
+
+export function useTopVideos(limit: number = 10) {
+  return useQuery({
+    queryKey: ["top-videos", limit],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("top_videos")
+        .select("*")
+        .limit(limit);
+      if (error) throw error;
+      return data as TopVideoRow[];
+    },
+  });
+}
+
+export function useAllVideoMetricsHistory() {
+  return useQuery({
+    queryKey: ["all-video-metrics-history"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("video_metrics_history")
+        .select("*, video_link:video_links(group_id, title)")
+        .order("recorded_at", { ascending: true });
+      if (error) throw error;
+      return data as (VideoMetricsHistory & { video_link: { group_id: string; title: string | null } })[];
+    },
+  });
+}
+
+export function useGroupMetricsHistory(groupId: string | undefined) {
+  return useQuery({
+    queryKey: ["group-metrics-history", groupId],
+    enabled: !!groupId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("video_metrics_history")
+        .select("views, recorded_at, video_link_id, video_links!inner(group_id)")
+        .eq("video_links.group_id", groupId!)
+        .order("recorded_at", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+

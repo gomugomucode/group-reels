@@ -188,37 +188,73 @@ export type Database = {
       }
       video_links: {
         Row: {
+          api_error: string | null
+          channel_name: string | null
           created_at: string
           created_by: string | null
+          duration_seconds: number | null
           group_id: string
           id: string
+          last_comment_count: number | null
+          last_fetched_at: string | null
+          last_like_count: number | null
+          last_synced: string | null
+          last_view_count: number | null
           platform: Database["public"]["Enums"]["platform_type"]
+          published_at: string | null
           status: Database["public"]["Enums"]["link_status"]
+          sync_status: Database["public"]["Enums"]["sync_status"]
+          thumbnail_url: string | null
           title: string | null
           updated_at: string
           url: string
+          youtube_video_id: string | null
         }
         Insert: {
+          api_error?: string | null
+          channel_name?: string | null
           created_at?: string
           created_by?: string | null
+          duration_seconds?: number | null
           group_id: string
           id?: string
+          last_comment_count?: number | null
+          last_fetched_at?: string | null
+          last_like_count?: number | null
+          last_synced?: string | null
+          last_view_count?: number | null
           platform?: Database["public"]["Enums"]["platform_type"]
+          published_at?: string | null
           status?: Database["public"]["Enums"]["link_status"]
+          sync_status?: Database["public"]["Enums"]["sync_status"]
+          thumbnail_url?: string | null
           title?: string | null
           updated_at?: string
           url: string
+          youtube_video_id?: string | null
         }
         Update: {
+          api_error?: string | null
+          channel_name?: string | null
           created_at?: string
           created_by?: string | null
+          duration_seconds?: number | null
           group_id?: string
           id?: string
+          last_comment_count?: number | null
+          last_fetched_at?: string | null
+          last_like_count?: number | null
+          last_synced?: string | null
+          last_view_count?: number | null
           platform?: Database["public"]["Enums"]["platform_type"]
+          published_at?: string | null
           status?: Database["public"]["Enums"]["link_status"]
+          sync_status?: Database["public"]["Enums"]["sync_status"]
+          thumbnail_url?: string | null
           title?: string | null
           updated_at?: string
           url?: string
+          youtube_video_id?: string | null
         }
         Relationships: [
           {
@@ -230,9 +266,110 @@ export type Database = {
           },
         ]
       }
+      video_metrics_history: {
+        Row: {
+          id: string
+          video_link_id: string
+          views: number
+          likes: number
+          comments: number
+          recorded_at: string
+        }
+        Insert: {
+          id?: string
+          video_link_id: string
+          views?: number
+          likes?: number
+          comments?: number
+          recorded_at?: string
+        }
+        Update: {
+          id?: string
+          video_link_id?: string
+          views?: number
+          likes?: number
+          comments?: number
+          recorded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_metrics_history_video_link_id_fkey"
+            columns: ["video_link_id"]
+            isOneToOne: false
+            referencedRelation: "video_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_sync_log: {
+        Row: {
+          id: string
+          triggered_by: string | null
+          started_at: string
+          completed_at: string | null
+          videos_processed: number
+          videos_succeeded: number
+          videos_failed: number
+          error_summary: string | null
+        }
+        Insert: {
+          id?: string
+          triggered_by?: string | null
+          started_at?: string
+          completed_at?: string | null
+          videos_processed?: number
+          videos_succeeded?: number
+          videos_failed?: number
+          error_summary?: string | null
+        }
+        Update: {
+          id?: string
+          triggered_by?: string | null
+          started_at?: string
+          completed_at?: string | null
+          videos_processed?: number
+          videos_succeeded?: number
+          videos_failed?: number
+          error_summary?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      group_analytics_summary: {
+        Row: {
+          group_id: string
+          team_name: string
+          video_count: number
+          total_views: number
+          total_likes: number
+          total_comments: number
+          last_synced: string | null
+          valid_count: number
+          invalid_count: number
+          youtube_count: number
+        }
+        Relationships: []
+      }
+      top_videos: {
+        Row: {
+          id: string
+          group_id: string
+          team_name: string
+          title: string | null
+          url: string
+          platform: Database["public"]["Enums"]["platform_type"]
+          youtube_video_id: string | null
+          thumbnail_url: string | null
+          channel_name: string | null
+          last_view_count: number | null
+          last_like_count: number | null
+          last_comment_count: number | null
+          last_synced: string | null
+          sync_status: Database["public"]["Enums"]["sync_status"]
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
@@ -257,6 +394,13 @@ export type Database = {
         | "tiktok"
         | "vimeo"
         | "other"
+      sync_status:
+        | "idle"
+        | "syncing"
+        | "success"
+        | "error"
+        | "private"
+        | "deleted"
     }
     CompositeTypes: {
       [_ in never]: never
