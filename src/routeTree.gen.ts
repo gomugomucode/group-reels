@@ -17,6 +17,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedGroupsNewRouteImport } from './routes/_authenticated/groups.new'
 import { Route as AuthenticatedGroupsIdRouteImport } from './routes/_authenticated/groups.$id'
+import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminGroupsRouteImport } from './routes/_authenticated/admin.groups'
 
 const AuthRoute = AuthRouteImport.update({
@@ -58,6 +59,11 @@ const AuthenticatedGroupsIdRoute = AuthenticatedGroupsIdRouteImport.update({
   path: '/groups/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminGroupsRoute =
   AuthenticatedAdminGroupsRouteImport.update({
     id: '/groups',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/admin/groups': typeof AuthenticatedAdminGroupsRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/groups/$id': typeof AuthenticatedGroupsIdRoute
   '/groups/new': typeof AuthenticatedGroupsNewRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/admin/groups': typeof AuthenticatedAdminGroupsRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/groups/$id': typeof AuthenticatedGroupsIdRoute
   '/groups/new': typeof AuthenticatedGroupsNewRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/admin/groups': typeof AuthenticatedAdminGroupsRoute
+  '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/groups/$id': typeof AuthenticatedGroupsIdRoute
   '/_authenticated/groups/new': typeof AuthenticatedGroupsNewRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/admin/groups'
+    | '/admin/users'
     | '/groups/$id'
     | '/groups/new'
     | '/admin/'
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/admin/groups'
+    | '/admin/users'
     | '/groups/$id'
     | '/groups/new'
     | '/admin'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/_authenticated/admin/groups'
+    | '/_authenticated/admin/users'
     | '/_authenticated/groups/$id'
     | '/_authenticated/groups/new'
     | '/_authenticated/admin/'
@@ -193,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGroupsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/users': {
+      id: '/_authenticated/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/groups': {
       id: '/_authenticated/admin/groups'
       path: '/groups'
@@ -205,11 +224,13 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminGroupsRoute: typeof AuthenticatedAdminGroupsRoute
+  AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminGroupsRoute: AuthenticatedAdminGroupsRoute,
+  AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
 
