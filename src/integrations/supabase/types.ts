@@ -14,16 +14,202 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analytics: {
+        Row: {
+          group_id: string
+          last_updated: string
+          platform_breakdown: Json
+          total_views: number
+        }
+        Insert: {
+          group_id: string
+          last_updated?: string
+          platform_breakdown?: Json
+          total_views?: number
+        }
+        Update: {
+          group_id?: string
+          last_updated?: string
+          platform_breakdown?: Json
+          total_views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: true
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          created_at: string
+          created_by: string
+          disabled: boolean
+          facebook: string | null
+          id: string
+          instagram: string | null
+          linkedin: string | null
+          member_names: string[]
+          team_leader: string | null
+          team_name: string
+          tiktok: string | null
+          updated_at: string
+          website: string | null
+          youtube: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          disabled?: boolean
+          facebook?: string | null
+          id?: string
+          instagram?: string | null
+          linkedin?: string | null
+          member_names?: string[]
+          team_leader?: string | null
+          team_name: string
+          tiktok?: string | null
+          updated_at?: string
+          website?: string | null
+          youtube?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          disabled?: boolean
+          facebook?: string | null
+          id?: string
+          instagram?: string | null
+          linkedin?: string | null
+          member_names?: string[]
+          team_leader?: string | null
+          team_name?: string
+          tiktok?: string | null
+          updated_at?: string
+          website?: string | null
+          youtube?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          member_names: string[]
+          team_name: string | null
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          member_names?: string[]
+          team_name?: string | null
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          member_names?: string[]
+          team_name?: string | null
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      video_links: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          platform: Database["public"]["Enums"]["platform_type"]
+          status: Database["public"]["Enums"]["link_status"]
+          title: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          platform?: Database["public"]["Enums"]["platform_type"]
+          status?: Database["public"]["Enums"]["link_status"]
+          title?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          platform?: Database["public"]["Enums"]["platform_type"]
+          status?: Database["public"]["Enums"]["link_status"]
+          title?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_links_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      owns_group: { Args: { _group_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      link_status: "valid" | "invalid" | "pending"
+      platform_type:
+        | "youtube"
+        | "facebook"
+        | "instagram"
+        | "tiktok"
+        | "vimeo"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +336,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      link_status: ["valid", "invalid", "pending"],
+      platform_type: [
+        "youtube",
+        "facebook",
+        "instagram",
+        "tiktok",
+        "vimeo",
+        "other",
+      ],
+    },
   },
 } as const
