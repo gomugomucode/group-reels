@@ -151,11 +151,20 @@ function DashboardPage() {
             </Select>
           )}
           {activeGroup && (
-            <Button asChild>
-              <Link to="/groups/$id" params={{ id: activeGroup.id }}>
-                Open group page <ArrowRight className="ml-1 size-4" />
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {isAdmin && (
+                <Button asChild variant="outline">
+                  <Link to="/admin">
+                    Open admin panel <ArrowRight className="ml-1 size-4" />
+                  </Link>
+                </Button>
+              )}
+              <Button asChild>
+                <Link to="/groups/$id" params={{ id: activeGroup.id }}>
+                  Open group page <ArrowRight className="ml-1 size-4" />
+                </Link>
+              </Button>
+            </div>
           )}
         </div>
       </div>

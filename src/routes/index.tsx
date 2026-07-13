@@ -51,12 +51,14 @@ const FEATURES = [
 ];
 
 function Landing() {
-  const { session, loading } = useAuth();
+  const { session, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && session) navigate({ to: "/dashboard", replace: true });
-  }, [loading, session, navigate]);
+    if (!loading && session) {
+      navigate({ to: isAdmin ? "/admin" : "/dashboard", replace: true });
+    }
+  }, [loading, session, isAdmin, navigate]);
 
   return (
     <div className="min-h-screen bg-background">
