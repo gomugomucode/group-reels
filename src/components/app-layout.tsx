@@ -29,7 +29,6 @@ function NavItem({
       to={to}
       className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
       activeProps={{ className: "!bg-secondary !text-foreground" }}
-      activeOptions={{ exact: to === "/admin" ? false : false }}
     >
       {icon}
       <span className="hidden sm:inline">{label}</span>
