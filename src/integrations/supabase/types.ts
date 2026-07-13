@@ -43,6 +43,47 @@ export type Database = {
           },
         ]
       }
+      group_members: {
+        Row: {
+          id: string
+          group_id: string
+          user_id: string | null
+          email: string
+          role: Database["public"]["Enums"]["member_role"]
+          invitation_status: Database["public"]["Enums"]["invite_status"]
+          invited_at: string
+          accepted_at: string | null
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          user_id?: string | null
+          email: string
+          role?: Database["public"]["Enums"]["member_role"]
+          invitation_status?: Database["public"]["Enums"]["invite_status"]
+          invited_at?: string
+          accepted_at?: string | null
+        }
+        Update: {
+          id?: string
+          group_id?: string
+          user_id?: string | null
+          email?: string
+          role?: Database["public"]["Enums"]["member_role"]
+          invitation_status?: Database["public"]["Enums"]["invite_status"]
+          invited_at?: string
+          accepted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       groups: {
         Row: {
           created_at: string
@@ -148,6 +189,7 @@ export type Database = {
       video_links: {
         Row: {
           created_at: string
+          created_by: string | null
           group_id: string
           id: string
           platform: Database["public"]["Enums"]["platform_type"]
@@ -158,6 +200,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           group_id: string
           id?: string
           platform?: Database["public"]["Enums"]["platform_type"]
@@ -168,6 +211,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           group_id?: string
           id?: string
           platform?: Database["public"]["Enums"]["platform_type"]
@@ -199,10 +243,13 @@ export type Database = {
         Returns: boolean
       }
       owns_group: { Args: { _group_id: string }; Returns: boolean }
+      is_group_member: { Args: { _group_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"
+      invite_status: "pending" | "accepted" | "rejected"
       link_status: "valid" | "invalid" | "pending"
+      member_role: "owner" | "member"
       platform_type:
         | "youtube"
         | "facebook"
@@ -338,7 +385,9 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      invite_status: ["pending", "accepted", "rejected"],
       link_status: ["valid", "invalid", "pending"],
+      member_role: ["owner", "member"],
       platform_type: [
         "youtube",
         "facebook",

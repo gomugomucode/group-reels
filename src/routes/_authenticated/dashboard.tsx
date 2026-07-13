@@ -9,6 +9,8 @@ import {
   ArrowRight,
   Search,
   ExternalLink,
+  Check,
+  X,
 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/hooks/use-auth";
@@ -35,7 +37,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check } from "lucide-react";
 import { acceptInvitation, rejectInvitation } from "@/lib/group-collaboration.functions";
 
 

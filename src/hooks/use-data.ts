@@ -119,7 +119,7 @@ export function useGroupMembers(groupId: string | undefined) {
         .select("*")
         .eq("group_id", groupId!)
         .order("role", { ascending: false })
-        .order("created_at", { ascending: true });
+        .order("invited_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as GroupMember[];
     },

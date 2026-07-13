@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -18,10 +19,17 @@ import {
   Crown,
   Users,
   Ban,
+  Mail,
+  UserMinus,
+  ShieldCheck,
+  Clock,
+  Check,
+  X,
+  RefreshCw,
 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/hooks/use-auth";
-import { useGroup, useVideoLinks, type VideoLink } from "@/hooks/use-data";
+import { useGroup, useVideoLinks, useGroupMembers, type VideoLink, type GroupMember } from "@/hooks/use-data";
 import { supabase } from "@/integrations/supabase/client";
 import { GroupForm } from "@/components/group-form";
 import { VideoLinkDialog } from "@/components/video-link-dialog";
@@ -50,6 +58,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { PLATFORMS, PLATFORM_LABELS } from "@/lib/video-platforms";
+import {
+  inviteMember,
+  cancelInvitation,
+  resendInvitation,
+  removeMember,
+  transferOwnership,
+} from "@/lib/group-collaboration.functions";
 
 export const Route = createFileRoute("/_authenticated/groups/$id")({
   component: GroupDetailPage,
@@ -64,6 +79,219 @@ const SOCIAL_ICONS = {
   website: Globe,
 } as const;
 
+// ─── Invite Form ────────────────────────────────────────────────────────────
+function InviteForm({ groupId }: { groupId: string }) {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const qc = useQueryClient();
+  const inviteFn = useServerFn(inviteMember);
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = email.trim();
+    if (!trimmed) return;
+    setLoading(true);
+    try {
+      await inviteFn({ data: { groupId, email: trimmed } });
+      toast.success(`Invitation sent to ${trimmed}`);
+      setEmail("");
+      qc.invalidateQueries({ queryKey: ["group-members", groupId] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send invitation");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleInvite} className="flex gap-2 pt-1">
+      <div className="relative flex-1">
+        <Mail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="email"
+          className="pl-9"
+          placeholder="Invite by email address..."
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={loading}
+        />
+      </div>
+      <Button type="submit" size="sm" disabled={loading || !email.trim()}>
+        {loading ? "Sending…" : "Invite"}
+      </Button>
+    </form>
+  );
+}
+
+// ─── Member Row ──────────────────────────────────────────────────────────────
+function MemberRow({
+  member,
+  isOwnerOrAdmin,
+  onCancel,
+  onResend,
+  onRemove,
+  onTransfer,
+}: {
+  member: GroupMember;
+  isOwnerOrAdmin: boolean;
+  onCancel: (id: string) => void;
+  onResend: (id: string) => void;
+  onRemove: (id: string) => void;
+  onTransfer: (id: string) => void;
+}) {
+  const statusColor =
+    member.invitation_status === "accepted"
+      ? "bg-success/15 text-success border-success/30"
+      : member.invitation_status === "pending"
+        ? "bg-warning/15 text-warning border-warning/30"
+        : "bg-destructive/15 text-destructive border-destructive/30";
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-secondary/20 px-4 py-3">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate font-medium text-foreground">{member.email}</span>
+        <div className="mt-0.5 flex items-center gap-2">
+          <Badge
+            className={`border text-xs capitalize ${statusColor}`}
+            variant="outline"
+          >
+            {member.invitation_status === "pending" && <Clock className="mr-1 size-3" />}
+            {member.invitation_status === "accepted" && <Check className="mr-1 size-3" />}
+            {member.invitation_status === "rejected" && <X className="mr-1 size-3" />}
+            {member.invitation_status}
+          </Badge>
+          <Badge variant="outline" className="border text-xs capitalize">
+            {member.role === "owner" ? (
+              <><Crown className="mr-1 size-3 text-warning" /> Owner</>
+            ) : (
+              member.role
+            )}
+          </Badge>
+        </div>
+      </div>
+
+      {isOwnerOrAdmin && member.role !== "owner" && (
+        <div className="flex shrink-0 gap-1">
+          {member.invitation_status === "pending" && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1 text-xs"
+                onClick={() => onResend(member.id)}
+                title="Resend invitation"
+              >
+                <RefreshCw className="size-3" /> Resend
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => onCancel(member.id)}
+                title="Cancel invitation"
+              >
+                <X className="size-3" /> Cancel
+              </Button>
+            </>
+          )}
+          {member.invitation_status === "accepted" && member.user_id && (
+            <>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1 text-xs"
+                    title="Transfer ownership"
+                  >
+                    <ShieldCheck className="size-3" /> Transfer
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Transfer ownership?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Transfer group ownership to <strong>{member.email}</strong>. You will become a
+                      regular member. This cannot be undone without their cooperation.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onTransfer(member.id)}>
+                      Transfer ownership
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    title="Remove member"
+                  >
+                    <UserMinus className="size-3" /> Remove
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remove member?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Remove <strong>{member.email}</strong> from this group. They will lose access
+                      to the group immediately.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => onRemove(member.id)}
+                    >
+                      Remove member
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
+          )}
+          {member.invitation_status === "accepted" && !member.user_id && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <UserMinus className="size-3" /> Remove
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove member?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Remove <strong>{member.email}</strong> from this group.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => onRemove(member.id)}
+                  >
+                    Remove
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Page ───────────────────────────────────────────────────────────────
 function GroupDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
@@ -72,6 +300,7 @@ function GroupDetailPage() {
 
   const { data: group, isLoading } = useGroup(id);
   const { data: videos = [] } = useVideoLinks(id);
+  const { data: members = [], isLoading: membersLoading } = useGroupMembers(id);
 
   const [editing, setEditing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -80,7 +309,15 @@ function GroupDetailPage() {
   const [platform, setPlatform] = useState("all");
   const [status, setStatus] = useState("all");
 
-  const canManage = !!group && (group.created_by === user?.id || isAdmin);
+  // Permission checks
+  const isOwner = !!group && group.created_by === user?.id;
+  const canManage = isOwner || isAdmin; // Full admin rights over the group
+  const myMembership = members.find(
+    (m) => m.user_id === user?.id && m.invitation_status === "accepted",
+  );
+  // Members can edit/delete their own video links; owners/admins can edit all
+  const canEditLink = (link: VideoLink) =>
+    canManage || (!!myMembership && link.created_by === user?.id);
 
   const filtered = useMemo(() => {
     return videos.filter((v) => {
@@ -93,6 +330,52 @@ function GroupDetailPage() {
       return matchSearch && matchPlatform && matchStatus;
     });
   }, [videos, search, platform, status]);
+
+  // Server functions
+  const cancelFn = useServerFn(cancelInvitation);
+  const resendFn = useServerFn(resendInvitation);
+  const removeFn = useServerFn(removeMember);
+  const transferFn = useServerFn(transferOwnership);
+
+  const handleCancel = async (memberId: string) => {
+    try {
+      await cancelFn({ data: { memberId } });
+      toast.success("Invitation cancelled");
+      qc.invalidateQueries({ queryKey: ["group-members", id] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to cancel");
+    }
+  };
+
+  const handleResend = async (memberId: string) => {
+    try {
+      await resendFn({ data: { memberId } });
+      toast.success("Invitation resent");
+      qc.invalidateQueries({ queryKey: ["group-members", id] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to resend");
+    }
+  };
+
+  const handleRemove = async (memberId: string) => {
+    try {
+      await removeFn({ data: { memberId } });
+      toast.success("Member removed");
+      qc.invalidateQueries({ queryKey: ["group-members", id] });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to remove member");
+    }
+  };
+
+  const handleTransfer = async (memberId: string) => {
+    try {
+      await transferFn({ data: { memberId } });
+      toast.success("Ownership transferred");
+      qc.invalidateQueries();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to transfer ownership");
+    }
+  };
 
   const deleteLink = useMutation({
     mutationFn: async (linkId: string) => {
@@ -148,6 +431,12 @@ function GroupDetailPage() {
     .map((k) => ({ key: k, url: group[k] }))
     .filter((s) => !!s.url);
 
+  // Accepted members + legacy member_names fallback
+  const acceptedMembers = members.filter((m) => m.invitation_status === "accepted");
+  const pendingMembers = members.filter((m) => m.invitation_status === "pending");
+  const showLegacyNames =
+    acceptedMembers.length === 0 && group.member_names && group.member_names.length > 0;
+
   return (
     <AppLayout>
       <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate({ to: "/dashboard" })}>
@@ -166,6 +455,7 @@ function GroupDetailPage() {
         </>
       ) : (
         <>
+          {/* ── Group Header Card ────────────────────────────── */}
           <div className="rounded-2xl border border-border bg-card p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -182,18 +472,17 @@ function GroupDetailPage() {
                     <Crown className="size-4 text-warning" /> Led by {group.team_leader}
                   </p>
                 )}
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Users className="size-4 text-muted-foreground" />
-                  {group.member_names.length ? (
-                    group.member_names.map((m) => (
+                {/* Legacy member_names */}
+                {showLegacyNames && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Users className="size-4 text-muted-foreground" />
+                    {group.member_names.map((m) => (
                       <Badge key={m} variant="secondary">
                         {m}
                       </Badge>
-                    ))
-                  ) : (
-                    <span className="text-sm text-muted-foreground">No members listed</span>
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
               {canManage && (
                 <div className="flex gap-2">
@@ -246,6 +535,7 @@ function GroupDetailPage() {
             )}
           </div>
 
+          {/* ── Stats Row ─────────────────────────────────────── */}
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             <StatCard label="Total videos" value={videos.length} icon={<Youtube className="size-4" />} accent />
             <StatCard
@@ -260,10 +550,61 @@ function GroupDetailPage() {
             />
           </div>
 
+          {/* ── Team Members Panel ────────────────────────────── */}
+          <div className="mt-6 rounded-2xl border border-border bg-card">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+              <div className="flex items-center gap-2">
+                <Users className="size-5 text-primary" />
+                <h2 className="text-lg font-semibold">Team members</h2>
+                {members.length > 0 && (
+                  <Badge variant="secondary">{acceptedMembers.length} active</Badge>
+                )}
+                {pendingMembers.length > 0 && (
+                  <Badge className="bg-warning/15 text-warning border-warning/30 border" variant="outline">
+                    {pendingMembers.length} pending
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {canManage && <InviteForm groupId={group.id} />}
+
+              {membersLoading ? (
+                <div className="space-y-2 pt-2">
+                  {[1, 2].map((i) => (
+                    <Skeleton key={i} className="h-16 rounded-xl" />
+                  ))}
+                </div>
+              ) : members.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  No collaborators yet.{" "}
+                  {canManage ? "Invite team members using the form above." : ""}
+                </p>
+              ) : (
+                <div className="space-y-2 pt-2">
+                  {members.map((m) => (
+                    <MemberRow
+                      key={m.id}
+                      member={m}
+                      isOwnerOrAdmin={canManage}
+                      onCancel={handleCancel}
+                      onResend={handleResend}
+                      onRemove={handleRemove}
+                      onTransfer={handleTransfer}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Video Links Panel ─────────────────────────────── */}
           <div className="mt-6 rounded-2xl border border-border bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
               <h2 className="text-lg font-semibold">Video links</h2>
-              {canManage && (
+              {/* Anyone who can see this group (owner, member, admin) can add links */}
+              {(canManage || !!myMembership) && (
                 <Button
                   size="sm"
                   onClick={() => {
@@ -336,7 +677,7 @@ function GroupDetailPage() {
                     </div>
                     <PlatformBadge platform={v.platform} />
                     <StatusBadge status={v.status} />
-                    {canManage && (
+                    {canEditLink(v) && (
                       <div className="flex gap-1">
                         <Button
                           variant="ghost"
@@ -364,7 +705,7 @@ function GroupDetailPage() {
             </div>
           </div>
 
-          {canManage && (
+          {(canManage || !!myMembership) && (
             <VideoLinkDialog
               open={dialogOpen}
               onOpenChange={setDialogOpen}

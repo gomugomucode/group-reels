@@ -69,7 +69,6 @@ export const inviteMember = createServerFn({ method: "POST" })
       user_id: profile?.id || null, // null if unregistered
       email,
       role: "member",
-      invited_by: userId,
       invitation_status: "pending",
     });
 
@@ -135,7 +134,7 @@ export const resendInvitation = createServerFn({ method: "POST" })
 
     const { error: updateErr } = await supabaseAdmin
       .from("group_members")
-      .update({ created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .update({ invited_at: new Date().toISOString() })
       .eq("id", data.memberId);
 
     if (updateErr) throw updateErr;
@@ -179,7 +178,7 @@ export const acceptInvitation = createServerFn({ method: "POST" })
       .update({
         user_id: userId,
         invitation_status: "accepted",
-        joined_at: new Date().toISOString(),
+        accepted_at: new Date().toISOString(),
       })
       .eq("id", data.memberId);
 
