@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -20,6 +20,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -48,12 +49,56 @@ function AnalyticsSettingsPage() {
   
   const [syncing, setSyncing] = useState(false);
 
+  const { data: analyticsData, isLoading: analyticsLoading } = useQuery({
+    queryKey: ["admin-analytics-overview"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("group_analytics_summary").select("*");
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        group_id: string;
+        team_name: string;
+        total_views: number;
+        total_likes: number;
+        total_comments: number;
+        video_count: number;
+      }>;
+    },
+  });
+
   // Fetch status logs
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin-sync-status"],
     queryFn: () => getStatusFn(),
     enabled: isAdmin,
   });
+
+  const handleExportCsv = () => {
+    if (!analyticsData?.length) return;
+    const headers = ["Team", "Videos", "Views", "Likes", "Comments"];
+    const rows = analyticsData.map((item) => [item.team_name, item.video_count, item.total_views, item.total_likes, item.total_comments]);
+    const csv = [headers, ...rows].map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "admin-analytics.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportExcel = () => {
+    if (!analyticsData?.length) return;
+    const headers = ["Team", "Videos", "Views", "Likes", "Comments"];
+    const rows = analyticsData.map((item) => [item.team_name, item.video_count, item.total_views, item.total_likes, item.total_comments]);
+    const tsv = [headers, ...rows].map((row) => row.join("\t")).join("\n");
+    const blob = new Blob([tsv], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "admin-analytics.xls";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleFullSync = async () => {
     if (syncing) return;
@@ -103,15 +148,23 @@ function AnalyticsSettingsPage() {
             </Link>
           </Button>
         </div>
-        <Button
-          size="sm"
-          onClick={handleFullSync}
-          disabled={syncing || !data?.apiKeyConfigured}
-          className="gap-1.5"
-        >
-          <RefreshCw className={`size-3.5 ${syncing ? "animate-spin" : ""}`} />
-          <span>Trigger Full Sync Now</span>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportCsv}>
+            Export CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportExcel}>
+            Export Excel
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleFullSync}
+            disabled={syncing || !data?.apiKeyConfigured}
+            className="gap-1.5"
+          >
+            <RefreshCw className={`size-3.5 ${syncing ? "animate-spin" : ""}`} />
+            <span>Refresh All</span>
+          </Button>
+        </div>
       </div>
 
       <div className="mb-6">
@@ -131,6 +184,54 @@ function AnalyticsSettingsPage() {
       ) : (
         <div className="space-y-6">
           {/* ── System Status Overview ────────────────────── */}
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-muted-foreground text-sm">Global Analytics Overview</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Platform-wide analytics across all groups and video links.</p>
+              </div>
+              <Badge variant="secondary">{analyticsData?.length ?? 0} teams</Badge>
+            </div>
+            <div className="mt-4 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Team</TableHead>
+                    <TableHead className="text-center">Videos</TableHead>
+                    <TableHead className="text-center">Views</TableHead>
+                    <TableHead className="text-center">Likes</TableHead>
+                    <TableHead className="text-center">Comments</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {analyticsLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
+                        Loading analytics...
+                      </TableCell>
+                    </TableRow>
+                  ) : analyticsData?.length ? (
+                    analyticsData.map((item) => (
+                      <TableRow key={item.group_id}>
+                        <TableCell className="font-medium">{item.team_name}</TableCell>
+                        <TableCell className="text-center">{item.video_count}</TableCell>
+                        <TableCell className="text-center">{item.total_views}</TableCell>
+                        <TableCell className="text-center">{item.total_likes}</TableCell>
+                        <TableCell className="text-center">{item.total_comments}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
+                        No analytics records available yet.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-2xl border border-border bg-card p-5">
               <h3 className="font-semibold text-muted-foreground text-sm">YouTube API Config</h3>

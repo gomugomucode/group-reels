@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   PieChart,
@@ -29,20 +29,14 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { StatCard } from "@/components/stat-card";
-import {
-  useAllGroups,
-  useAllVideoLinks,
-  useAllProfiles,
-  useAdminAnalyticsSummary,
-  useTopVideos,
-  useAllVideoMetricsHistory,
-} from "@/hooks/use-data";
+import { useAdminDashboardData } from "@/hooks/use-data";
 import {
   PLATFORMS,
   PLATFORM_LABELS,
   type Platform,
 } from "@/lib/video-platforms";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCount } from "@/lib/youtube";
 
@@ -80,13 +74,18 @@ function ChartCard({
 }
 
 function AdminDashboard() {
-  // Queries
-  const { data: groups = [], isLoading: gLoading } = useAllGroups();
-  const { data: videos = [], isLoading: vLoading } = useAllVideoLinks();
-  const { data: profiles = [], isLoading: pLoading } = useAllProfiles(true);
-  const { data: analyticsSummary = [], isLoading: aLoading } = useAdminAnalyticsSummary();
-  const { data: topVideosList = [], isLoading: topLoading } = useTopVideos(8);
-  const { data: historyData = [], isLoading: historyLoading } = useAllVideoMetricsHistory();
+  const [search, setSearch] = useState("");
+  const { data: adminData, isLoading: adminLoading } = useAdminDashboardData();
+
+  const groups = adminData?.groups ?? [];
+  const videos = adminData?.videos ?? [];
+  const profiles = adminData?.profiles ?? [];
+  const analyticsSummary = adminData?.analyticsSummary ?? [];
+  const topVideosList = adminData?.topVideos ?? [];
+  const historyData = adminData?.historyData ?? [];
+  const pendingInvitations = adminData?.pendingInvitations ?? 0;
+  const activeCollaborations = adminData?.activeCollaborations ?? 0;
+  const hasStoredAnalytics = adminData?.hasStoredAnalytics ?? false;
 
   // Metrics summary
   const totals = useMemo(() => {
@@ -132,7 +131,7 @@ function AdminDashboard() {
   const topGroupsData = useMemo(() => {
     return [...analyticsSummary]
       .sort((a, b) => b.total_views - a.total_views)
-      .slice(0, 8)
+      .slice(0, 10)
       .map((g) => ({
         name: g.team_name.length > 14 ? g.team_name.slice(0, 13) + "…" : g.team_name,
         views: g.total_views,
@@ -144,7 +143,7 @@ function AdminDashboard() {
   const activeUploadersData = useMemo(() => {
     return [...analyticsSummary]
       .sort((a, b) => b.video_count - a.video_count)
-      .slice(0, 8)
+      .slice(0, 10)
       .map((g) => ({
         name: g.team_name.length > 14 ? g.team_name.slice(0, 13) + "…" : g.team_name,
         videos: g.video_count,
@@ -192,7 +191,65 @@ function AdminDashboard() {
   const topPlatform =
     [...platformData].sort((a, b) => b.views - a.views)[0]?.platform ?? "—";
 
-  const loading = gLoading || vLoading || pLoading || aLoading || topLoading || historyLoading;
+  const dailyUploadsData = useMemo(() => {
+    const map = new Map<string, number>();
+    videos.forEach((video) => {
+      const createdAt = video.created_at ? new Date(video.created_at) : null;
+      if (!createdAt || Number.isNaN(createdAt.getTime())) return;
+      const key = createdAt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      map.set(key, (map.get(key) ?? 0) + 1);
+    });
+    return Array.from(map.entries())
+      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+      .map(([date, uploads]) => ({ date, uploads }));
+  }, [videos]);
+
+  const monthlyGrowthData = useMemo(() => {
+    const map = new Map<string, number>();
+    historyData.forEach((entry) => {
+      const date = new Date(entry.recorded_at);
+      const key = date.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+      map.set(key, (map.get(key) ?? 0) + (entry.views ?? 0));
+    });
+    return Array.from(map.entries()).map(([date, views]) => ({ date, views }));
+  }, [historyData]);
+
+  const globalSearchResults = useMemo(() => {
+    if (!search.trim()) return [];
+    const keyword = search.trim().toLowerCase();
+    const matches = [
+      ...profiles.filter((profile) => {
+        const haystack = [profile.username, profile.email, profile.team_name ?? ""].join(" ").toLowerCase();
+        return haystack.includes(keyword);
+      }).map((profile) => ({
+        type: "User",
+        label: profile.username,
+        description: profile.email,
+        href: "/admin/users",
+      })),
+      ...groups.filter((group) => {
+        const haystack = [group.team_name, ...(group.member_names ?? [])].join(" ").toLowerCase();
+        return haystack.includes(keyword);
+      }).map((group) => ({
+        type: "Group",
+        label: group.team_name,
+        description: `${group.member_names.length} members`,
+        href: "/admin/groups",
+      })),
+      ...videos.filter((video) => {
+        const haystack = [video.title ?? "", video.url, video.platform].join(" ").toLowerCase();
+        return haystack.includes(keyword);
+      }).map((video) => ({
+        type: "Video",
+        label: video.title ?? "Untitled video",
+        description: video.url,
+        href: "/admin/video-links",
+      })),
+    ].slice(0, 8);
+    return matches;
+  }, [groups, profiles, search, videos]);
+
+  const loading = adminLoading;
 
   return (
     <AppLayout>
@@ -211,6 +268,48 @@ function AdminDashboard() {
         </Button>
       </div>
 
+      <div className="mb-6 rounded-2xl border border-border bg-card p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Global admin search</h2>
+            <p className="text-sm text-muted-foreground">Search users, groups, and video links from the admin console.</p>
+          </div>
+          <div className="w-full max-w-xl">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search users, teams, or video links"
+            />
+          </div>
+        </div>
+        {search.trim() && (
+          <div className="mt-3 rounded-xl border border-border bg-background/70 p-3">
+            {globalSearchResults.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No matching users, groups, or videos were found.</p>
+            ) : (
+              <div className="space-y-2">
+                {globalSearchResults.map((result, index) => (
+                  <div key={`${result.type}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-card/70 px-3 py-2">
+                    <div>
+                      <p className="text-sm font-medium">{result.label}</p>
+                      <p className="text-xs text-muted-foreground">{result.description}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {result.type}
+                      </span>
+                      <Button asChild variant="ghost" size="sm">
+                        <Link to={result.href}>Open</Link>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -220,58 +319,71 @@ function AdminDashboard() {
       ) : (
         <>
           {/* ── Real Platform Stats Grid ────────────────────── */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Total Views" value={formatCount(totals.views)} icon={<Eye className="size-4" />} accent />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <StatCard label="Total Users" value={profiles.length} icon={<Users className="size-4" />} accent />
+            <StatCard label="Total Groups" value={groups.length} icon={<FolderKanban className="size-4" />} />
+            <StatCard label="Total Video Links" value={videos.length} icon={<Video className="size-4" />} />
+            <StatCard label="Total Views" value={formatCount(totals.views)} icon={<Eye className="size-4" />} />
             <StatCard label="Total Likes" value={formatCount(totals.likes)} icon={<ThumbsUp className="size-4" />} />
-            <StatCard label="Total Comments" value={formatCount(totals.comments)} icon={<MessageSquare className="size-4" />} />
-            <StatCard label="Avg Views / Video" value={formatCount(totals.averageViews)} icon={<TrendingUp className="size-4" />} />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-4">
-            <StatCard label="Groups" value={groups.length} icon={<FolderKanban className="size-4" />} />
-            <StatCard label="Total Video Links" value={videos.length} icon={<Video className="size-4" />} />
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <StatCard label="Total Comments" value={formatCount(totals.comments)} icon={<MessageSquare className="size-4" />} />
+            <StatCard label="Pending Invitations" value={pendingInvitations} icon={<Users className="size-4" />} />
+            <StatCard label="Active Collaborations" value={activeCollaborations} icon={<Users className="size-4" />} />
             <StatCard label="Invalid Links" value={totals.invalidCount} icon={<AlertTriangle className="size-4" />} />
             <StatCard label="Top Platform (by views)" value={topPlatform} icon={<Sparkles className="size-4" />} />
           </div>
 
+          <div className="mt-4 rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
+            {hasStoredAnalytics ? (
+              <span>Analytics totals reflect synced and stored video data from the platform.</span>
+            ) : (
+              <span>Stored analytics data is limited right now, so totals are shown from the available records.</span>
+            )}
+          </div>
+
           {/* ── Views Growth Chart ──────────────────────────── */}
-          {growthChartData.length > 0 && (
-            <div className="mt-6 rounded-2xl border border-border bg-card p-5">
-              <div className="mb-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <TrendingUp className="size-4 text-primary" /> Overall Views Growth
-                </h3>
-                <p className="text-xs text-muted-foreground">Cumulative views growth over time across all teams</p>
+          {(growthChartData.length > 0 || monthlyGrowthData.length > 0) && (
+            <div className="mt-6 grid gap-6 lg:grid-cols-2">
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <div className="mb-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <TrendingUp className="size-4 text-primary" /> Monthly Growth
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Historical view volume by month across all teams</p>
+                </div>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyGrowthData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                      <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={11} />
+                      <YAxis stroke="var(--color-muted-foreground)" fontSize={11} tickFormatter={(v) => formatCount(v)} />
+                      <Tooltip contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-border)", borderRadius: 12, color: "var(--color-popover-foreground)" }} formatter={(v: any) => [`${v.toLocaleString()} views`]} />
+                      <Line type="monotone" dataKey="views" stroke="var(--color-primary)" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={growthChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                    <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={11} />
-                    <YAxis
-                      stroke="var(--color-muted-foreground)"
-                      fontSize={11}
-                      tickFormatter={(v) => formatCount(v)}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: "var(--color-popover)",
-                        border: "1px solid var(--color-border)",
-                        borderRadius: 12,
-                        color: "var(--color-popover-foreground)",
-                      }}
-                      formatter={(v: any) => [`${v.toLocaleString()} views`, "Cumulative Views"]}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="views"
-                      stroke="var(--color-primary)"
-                      strokeWidth={2.5}
-                      dot={{ r: 3 }}
-                      activeDot={{ r: 5 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <div className="mb-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <Video className="size-4 text-primary" /> Daily Uploads
+                  </h3>
+                  <p className="text-xs text-muted-foreground">New video links added across the platform over time</p>
+                </div>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dailyUploadsData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                      <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={11} />
+                      <YAxis stroke="var(--color-muted-foreground)" fontSize={11} />
+                      <Tooltip contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-border)", borderRadius: 12, color: "var(--color-popover-foreground)" }} />
+                      <Bar dataKey="uploads" fill="var(--color-chart-3)" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
           )}
@@ -348,7 +460,7 @@ function AdminDashboard() {
 
           {/* ── Top Groups and Top Uploaders Charts ──────────── */}
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <ChartCard title="Top Groups (by total views)" description="Teams with the most video views aggregate">
+            <ChartCard title="Top 10 Groups (by total views)" description="Teams with the most video views aggregate">
               {topGroupsData.length === 0 ? (
                 <div className="grid h-full place-items-center text-sm text-muted-foreground">
                   No group views recorded yet
@@ -380,7 +492,7 @@ function AdminDashboard() {
               )}
             </ChartCard>
 
-            <ChartCard title="Most Active uploaders" description="Teams with the highest video link counts">
+            <ChartCard title="Most Active Uploaders" description="Teams with the highest video link counts">
               {activeUploadersData.length === 0 ? (
                 <div className="grid h-full place-items-center text-sm text-muted-foreground">
                   No upload statistics yet
@@ -411,7 +523,7 @@ function AdminDashboard() {
           {/* ── Top Performing Videos List ─────────────────── */}
           <div className="mt-6 rounded-2xl border border-border bg-card">
             <div className="border-b border-border p-4">
-              <h3 className="font-semibold text-lg">Top Performing Videos</h3>
+              <h3 className="font-semibold text-lg">Top 10 Videos</h3>
               <p className="text-xs text-muted-foreground">Overall highest viewed videos across the platform</p>
             </div>
             <div className="divide-y divide-border">
@@ -454,7 +566,7 @@ function AdminDashboard() {
           <div className="mt-6 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Manage</h2>
           </div>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Link
               to="/admin/groups"
               className="group flex items-center justify-between rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary"
@@ -475,6 +587,30 @@ function AdminDashboard() {
                 <p className="font-semibold">User accounts</p>
                 <p className="text-sm text-muted-foreground">
                   Manage roles and remove accounts.
+                </p>
+              </div>
+              <ArrowRight className="size-5 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+            </Link>
+            <Link
+              to="/admin/video-links"
+              className="group flex items-center justify-between rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary"
+            >
+              <div>
+                <p className="font-semibold">Video links</p>
+                <p className="text-sm text-muted-foreground">
+                  Edit, refresh, filter, and remove video links.
+                </p>
+              </div>
+              <ArrowRight className="size-5 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+            </Link>
+            <Link
+              to="/admin/analytics"
+              className="group flex items-center justify-between rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary"
+            >
+              <div>
+                <p className="font-semibold">Analytics</p>
+                <p className="text-sm text-muted-foreground">
+                  Review sync health, refresh all analytics, and export reports.
                 </p>
               </div>
               <ArrowRight className="size-5 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />

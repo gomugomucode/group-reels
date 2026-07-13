@@ -107,6 +107,68 @@ export function useAllProfiles(enabled: boolean) {
   });
 }
 
+export function useAdminDashboardData() {
+  return useQuery({
+    queryKey: ["admin-dashboard-data"],
+    queryFn: async () => {
+      const [
+        { data: profiles, error: profilesError },
+        { data: groups, error: groupsError },
+        { data: videos, error: videosError },
+        { data: analyticsSummary, error: analyticsSummaryError },
+        { data: topVideos, error: topVideosError },
+        { data: historyData, error: historyError },
+        { data: membershipRows, error: membershipsError },
+        { data: roles, error: rolesError },
+      ] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("groups").select("*").order("created_at", { ascending: false }),
+        supabase.from("video_links").select("*").order("created_at", { ascending: false }),
+        supabase.from("group_analytics_summary").select("*"),
+        supabase.from("top_videos").select("*").limit(10),
+        supabase.from("video_metrics_history").select("*").order("recorded_at", { ascending: true }),
+        supabase.from("group_members").select("invitation_status"),
+        supabase.from("user_roles").select("user_id, role"),
+      ]);
+
+      if (profilesError) throw profilesError;
+      if (groupsError) throw groupsError;
+      if (videosError) throw videosError;
+      if (analyticsSummaryError) throw analyticsSummaryError;
+      if (topVideosError) throw topVideosError;
+      if (historyError) throw historyError;
+      if (membershipsError) throw membershipsError;
+      if (rolesError) throw rolesError;
+
+      const roleMap = new Map<string, string[]>();
+      (roles ?? []).forEach((role) => {
+        const list = roleMap.get(role.user_id) ?? [];
+        list.push(role.role);
+        roleMap.set(role.user_id, list);
+      });
+
+      const profilesWithRoles = (profiles ?? []).map((profile) => ({
+        ...(profile as ProfileRow),
+        roles: roleMap.get(profile.id) ?? [],
+      }));
+
+      return {
+        profiles: profilesWithRoles,
+        groups: (groups ?? []) as Group[],
+        videos: (videos ?? []) as VideoLink[],
+        analyticsSummary: (analyticsSummary ?? []) as GroupAnalyticsSummary[],
+        topVideos: (topVideos ?? []) as TopVideoRow[],
+        historyData: (historyData ?? []) as VideoMetricsHistory[],
+        pendingInvitations: (membershipRows ?? []).filter((row: any) => row.invitation_status === "pending").length,
+        activeCollaborations: (membershipRows ?? []).filter((row: any) => row.invitation_status === "accepted").length,
+        hasStoredAnalytics: (videos ?? []).some((video: VideoLink) =>
+          video.last_view_count !== null || video.last_like_count !== null || video.last_comment_count !== null || video.last_fetched_at !== null,
+        ),
+      };
+    },
+  });
+}
+
 export type GroupMember = Database["public"]["Tables"]["group_members"]["Row"];
 
 export function useGroupMembers(groupId: string | undefined) {

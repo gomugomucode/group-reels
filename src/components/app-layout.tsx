@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Clapperboard, LayoutDashboard, Shield, LogOut, Users, Activity } from "lucide-react";
+import { Clapperboard, LayoutDashboard, Shield, LogOut, Users, Activity, Video } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,7 @@ export function AppHeader() {
             <>
               <NavItem to="/admin" icon={<Shield className="size-4" />} label="Admin" />
               <NavItem to="/admin/analytics" icon={<Activity className="size-4" />} label="Analytics" />
+              <NavItem to="/admin/video-links" icon={<Video className="size-4" />} label="Videos" />
               <NavItem to="/admin/users" icon={<Users className="size-4" />} label="Users" />
             </>
           )}
