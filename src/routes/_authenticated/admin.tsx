@@ -1,24 +1,30 @@
-import { useEffect } from "react";
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  beforeLoad: async () => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
+      throw redirect({ to: "/auth" });
+    }
+
+    const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", {
+      _user_id: data.user.id,
+      _role: "admin",
+    });
+
+    if (roleError || !isAdmin) {
+      throw redirect({ to: "/dashboard" });
+    }
+  },
   component: AdminLayout,
 });
 
 function AdminLayout() {
   const { isAdmin, loading } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && !isAdmin) {
-      toast.error("Admin access required");
-      navigate({ to: "/dashboard", replace: true });
-    }
-  }, [loading, isAdmin, navigate]);
 
   if (loading || !isAdmin) {
     return (

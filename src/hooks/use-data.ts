@@ -152,6 +152,8 @@ export function useAdminDashboardData() {
         roles: roleMap.get(profile.id) ?? [],
       }));
 
+      const acceptedMembers = (membershipRows ?? []).filter((row: any) => row.invitation_status === "accepted").length;
+
       return {
         profiles: profilesWithRoles,
         groups: (groups ?? []) as Group[],
@@ -159,8 +161,9 @@ export function useAdminDashboardData() {
         analyticsSummary: (analyticsSummary ?? []) as GroupAnalyticsSummary[],
         topVideos: (topVideos ?? []) as TopVideoRow[],
         historyData: (historyData ?? []) as VideoMetricsHistory[],
+        totalMembers: acceptedMembers,
         pendingInvitations: (membershipRows ?? []).filter((row: any) => row.invitation_status === "pending").length,
-        activeCollaborations: (membershipRows ?? []).filter((row: any) => row.invitation_status === "accepted").length,
+        activeCollaborations: acceptedMembers,
         hasStoredAnalytics: (videos ?? []).some((video: VideoLink) =>
           video.last_view_count !== null || video.last_like_count !== null || video.last_comment_count !== null || video.last_fetched_at !== null,
         ),
@@ -170,6 +173,20 @@ export function useAdminDashboardData() {
 }
 
 export type GroupMember = Database["public"]["Tables"]["group_members"]["Row"];
+
+export function useAllGroupMembers() {
+  return useQuery({
+    queryKey: ["admin-group-members"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("group_members")
+        .select("*, group:groups(team_name)")
+        .order("invited_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Array<GroupMember & { group?: { team_name: string | null } }>;
+    },
+  });
+}
 
 export function useGroupMembers(groupId: string | undefined) {
   return useQuery({

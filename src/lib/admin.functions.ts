@@ -11,6 +11,62 @@ async function assertAdmin(supabase: any, userId: string) {
   if (!data) throw new Error("Forbidden: admin access required");
 }
 
+export const setUserRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        userId: z.string().uuid(),
+        makeAdmin: z.boolean(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+
+    if (data.userId === userId && !data.makeAdmin) {
+      throw new Error("You cannot remove your own admin role");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (data.makeAdmin) {
+      const { error } = await supabaseAdmin.from("user_roles").insert({ user_id: data.userId, role: "admin" });
+      if (error && error.code !== "23505") throw new Error(error.message);
+    } else {
+      const { error } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId).eq("role", "admin");
+      if (error) throw new Error(error.message);
+    }
+
+    return { ok: true };
+  });
+
+export const setUserAccountStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        userId: z.string().uuid(),
+        disabled: z.boolean(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+
+    if (data.userId === userId && data.disabled) {
+      throw new Error("You cannot disable your own account");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("profiles").update({ disabled: data.disabled, updated_at: new Date().toISOString() }).eq("id", data.userId);
+    if (error) throw new Error(error.message);
+
+    return { ok: true };
+  });
+
 /** Update a user's editable account details. Admin only. */
 export const updateUserAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Search, ExternalLink, Trash2, Ban, CheckCircle2, Pencil, Users, Instagram, Youtube, Facebook, Music2, Linkedin, Globe } from "lucide-react";
+import { Search, ExternalLink, Trash2, Ban, CheckCircle2, Pencil, Users, Instagram, Youtube, Facebook, Music2, Linkedin, Globe, Mail } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { groupSchema } from "@/lib/video-platforms";
-import type { Group, VideoLink } from "@/hooks/use-data";
+import { useAllGroupMembers, type Group, type VideoLink } from "@/hooks/use-data";
 
 const SOCIALS = [
   { key: "instagram", label: "Instagram", icon: Instagram, placeholder: "https://instagram.com/yourteam" },
@@ -58,6 +58,8 @@ function AdminGroupsPage() {
   const [page, setPage] = useState(1);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [viewingMembersGroup, setViewingMembersGroup] = useState<Group | null>(null);
+  const [viewingInvitationsGroup, setViewingInvitationsGroup] = useState<Group | null>(null);
+  const [viewingSocialsGroup, setViewingSocialsGroup] = useState<Group | null>(null);
   const [groupForm, setGroupForm] = useState({
     teamName: "",
     members: [""],
@@ -93,6 +95,8 @@ function AdminGroupsPage() {
       };
     },
   });
+
+  const { data: allGroupMembers = [] } = useAllGroupMembers();
 
   const groups = data?.groups ?? [];
   const videos = data?.videos ?? [];
@@ -266,6 +270,22 @@ function AdminGroupsPage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              title="View invitations"
+                              onClick={() => setViewingInvitationsGroup(g)}
+                            >
+                              <Mail className="size-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="View social links"
+                              onClick={() => setViewingSocialsGroup(g)}
+                            >
+                              <Globe className="size-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               title="Edit"
                               onClick={() => openEditor(g)}
                             >
@@ -350,6 +370,78 @@ function AdminGroupsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewingMembersGroup(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(viewingInvitationsGroup)} onOpenChange={(open) => !open && setViewingInvitationsGroup(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{viewingInvitationsGroup?.team_name ?? "Group invitations"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            {allGroupMembers.filter((member) => member.group_id === viewingInvitationsGroup?.id).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No invitations recorded for this group.</p>
+            ) : (
+              allGroupMembers
+                .filter((member) => member.group_id === viewingInvitationsGroup?.id)
+                .map((member) => (
+                  <div key={member.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
+                    <div>
+                      <div className="font-medium">{member.email}</div>
+                      <div className="text-xs text-muted-foreground">Role: {member.role}</div>
+                    </div>
+                    <Badge
+                      className={
+                        member.invitation_status === "accepted"
+                          ? "border-transparent bg-success/15 text-success"
+                          : member.invitation_status === "rejected"
+                            ? "border-transparent bg-destructive/15 text-destructive"
+                            : "border-transparent bg-muted/15 text-muted-foreground"
+                      }
+                    >
+                      {member.invitation_status}
+                    </Badge>
+                  </div>
+                ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingInvitationsGroup(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(viewingSocialsGroup)} onOpenChange={(open) => !open && setViewingSocialsGroup(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{viewingSocialsGroup?.team_name ?? "Social links"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {SOCIALS.filter(({ key }) => Boolean(viewingSocialsGroup?.[key])) .length === 0 ? (
+              <p className="text-sm text-muted-foreground">No social links have been added for this group yet.</p>
+            ) : (
+              SOCIALS.filter(({ key }) => Boolean(viewingSocialsGroup?.[key])).map(({ key, label }) => (
+                <div key={key} className="rounded-lg border border-border px-3 py-2">
+                  <p className="text-sm font-medium">{label}</p>
+                  <a
+                    href={viewingSocialsGroup?.[key] as string}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 block break-all text-sm text-primary underline underline-offset-4"
+                  >
+                    {viewingSocialsGroup?.[key]}
+                  </a>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingSocialsGroup(null)}>
               Close
             </Button>
           </DialogFooter>

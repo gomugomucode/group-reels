@@ -3,11 +3,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Search, Trash2, KeyRound, ShieldCheck, ShieldOff, Pencil } from "lucide-react";
+import { Search, Trash2, KeyRound, ShieldCheck, ShieldOff, Pencil, Ban, CheckCircle2 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { deleteUserAccount, sendPasswordReset, updateUserAccount } from "@/lib/admin.functions";
+import { deleteUserAccount, sendPasswordReset, setUserAccountStatus, setUserRole, updateUserAccount } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,6 +59,8 @@ function AdminUsersPage() {
   const deleteFn = useServerFn(deleteUserAccount);
   const resetFn = useServerFn(sendPasswordReset);
   const updateFn = useServerFn(updateUserAccount);
+  const roleFn = useServerFn(setUserRole);
+  const statusFn = useServerFn(setUserAccountStatus);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-users", page, search],
@@ -103,24 +105,26 @@ function AdminUsersPage() {
 
   const toggleAdmin = useMutation({
     mutationFn: async ({ userId, makeAdmin }: { userId: string; makeAdmin: boolean }) => {
-      if (makeAdmin) {
-        const { error } = await supabase
-          .from("user_roles")
-          .insert({ user_id: userId, role: "admin" });
-        if (error && error.code !== "23505") throw error;
-      } else {
-        const { error } = await supabase
-          .from("user_roles")
-          .delete()
-          .eq("user_id", userId)
-          .eq("role", "admin");
-        if (error) throw error;
-      }
+      await roleFn({ data: { userId, makeAdmin } });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       qc.invalidateQueries({ queryKey: ["profiles-all"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
       toast.success("Role updated");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const toggleDisabled = useMutation({
+    mutationFn: async ({ userId, disabled }: { userId: string; disabled: boolean }) => {
+      await statusFn({ data: { userId, disabled } });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      qc.invalidateQueries({ queryKey: ["profiles-all"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+      toast.success("Account status updated");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -231,13 +235,24 @@ function AdminUsersPage() {
                         {p.team_name ?? "—"}
                       </TableCell>
                       <TableCell>
-                        {isAdminUser ? (
-                          <Badge className="border-transparent bg-primary/15 text-primary">
-                            Admin
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">User</Badge>
-                        )}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {isAdminUser ? (
+                            <Badge className="border-transparent bg-primary/15 text-primary">
+                              Admin
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">User</Badge>
+                          )}
+                          {p.disabled ? (
+                            <Badge className="border-transparent bg-destructive/15 text-destructive">
+                              Disabled
+                            </Badge>
+                          ) : (
+                            <Badge className="border-transparent bg-success/15 text-success">
+                              Active
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
@@ -270,6 +285,19 @@ function AdminUsersPage() {
                               <ShieldOff className="size-4" />
                             ) : (
                               <ShieldCheck className="size-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title={p.disabled ? "Enable account" : "Disable account"}
+                            disabled={isSelf}
+                            onClick={() => toggleDisabled.mutate({ userId: p.id, disabled: !p.disabled })}
+                          >
+                            {p.disabled ? (
+                              <CheckCircle2 className="size-4" />
+                            ) : (
+                              <Ban className="size-4" />
                             )}
                           </Button>
                           <AlertDialog>

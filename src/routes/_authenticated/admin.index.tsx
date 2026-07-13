@@ -83,6 +83,7 @@ function AdminDashboard() {
   const analyticsSummary = adminData?.analyticsSummary ?? [];
   const topVideosList = adminData?.topVideos ?? [];
   const historyData = adminData?.historyData ?? [];
+  const totalMembers = adminData?.totalMembers ?? 0;
   const pendingInvitations = adminData?.pendingInvitations ?? 0;
   const activeCollaborations = adminData?.activeCollaborations ?? 0;
   const hasStoredAnalytics = adminData?.hasStoredAnalytics ?? false;
@@ -190,6 +191,22 @@ function AdminDashboard() {
 
   const topPlatform =
     [...platformData].sort((a, b) => b.views - a.views)[0]?.platform ?? "—";
+
+  const monthlyUploadsData = useMemo(() => {
+    const monthMap = new Map<string, { label: string; count: number; sortKey: string }>();
+    videos.forEach((video) => {
+      const createdAt = video.created_at ? new Date(video.created_at) : null;
+      if (!createdAt || Number.isNaN(createdAt.getTime())) return;
+      const sortKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, "0")}`;
+      const label = createdAt.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+      const existing = monthMap.get(sortKey) ?? { label, count: 0, sortKey };
+      existing.count += 1;
+      monthMap.set(sortKey, existing);
+    });
+    return Array.from(monthMap.values())
+      .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+      .map(({ label, count }) => ({ date: label, uploads: count }));
+  }, [videos]);
 
   const dailyUploadsData = useMemo(() => {
     const map = new Map<string, number>();
@@ -322,17 +339,17 @@ function AdminDashboard() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard label="Total Users" value={profiles.length} icon={<Users className="size-4" />} accent />
             <StatCard label="Total Groups" value={groups.length} icon={<FolderKanban className="size-4" />} />
+            <StatCard label="Total Members" value={totalMembers} icon={<Users className="size-4" />} />
             <StatCard label="Total Video Links" value={videos.length} icon={<Video className="size-4" />} />
             <StatCard label="Total Views" value={formatCount(totals.views)} icon={<Eye className="size-4" />} />
-            <StatCard label="Total Likes" value={formatCount(totals.likes)} icon={<ThumbsUp className="size-4" />} />
           </div>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <StatCard label="Total Likes" value={formatCount(totals.likes)} icon={<ThumbsUp className="size-4" />} />
             <StatCard label="Total Comments" value={formatCount(totals.comments)} icon={<MessageSquare className="size-4" />} />
             <StatCard label="Pending Invitations" value={pendingInvitations} icon={<Users className="size-4" />} />
             <StatCard label="Active Collaborations" value={activeCollaborations} icon={<Users className="size-4" />} />
             <StatCard label="Invalid Links" value={totals.invalidCount} icon={<AlertTriangle className="size-4" />} />
-            <StatCard label="Top Platform (by views)" value={topPlatform} icon={<Sparkles className="size-4" />} />
           </div>
 
           <div className="mt-4 rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
@@ -369,9 +386,33 @@ function AdminDashboard() {
               <div className="rounded-2xl border border-border bg-card p-5">
                 <div className="mb-4">
                   <h3 className="font-semibold text-lg flex items-center gap-2">
-                    <Video className="size-4 text-primary" /> Daily Uploads
+                    <Video className="size-4 text-primary" /> Monthly Uploads
                   </h3>
                   <p className="text-xs text-muted-foreground">New video links added across the platform over time</p>
+                </div>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlyUploadsData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                      <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={11} />
+                      <YAxis stroke="var(--color-muted-foreground)" fontSize={11} />
+                      <Tooltip contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-border)", borderRadius: 12, color: "var(--color-popover-foreground)" }} />
+                      <Bar dataKey="uploads" fill="var(--color-chart-3)" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {(growthChartData.length > 0 || monthlyGrowthData.length > 0 || dailyUploadsData.length > 0) && (
+            <div className="mt-6 grid gap-6 lg:grid-cols-2">
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <div className="mb-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <Video className="size-4 text-primary" /> Daily Uploads
+                  </h3>
+                  <p className="text-xs text-muted-foreground">New video links added day by day across the platform</p>
                 </div>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
@@ -380,9 +421,22 @@ function AdminDashboard() {
                       <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={11} />
                       <YAxis stroke="var(--color-muted-foreground)" fontSize={11} />
                       <Tooltip contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-border)", borderRadius: 12, color: "var(--color-popover-foreground)" }} />
-                      <Bar dataKey="uploads" fill="var(--color-chart-3)" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="uploads" fill="var(--color-chart-4)" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <div className="mb-4">
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <Sparkles className="size-4 text-primary" /> Top Platform
+                  </h3>
+                  <p className="text-xs text-muted-foreground">The highest-performing platform by views</p>
+                </div>
+                <div className="flex h-64 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/60 p-6 text-center">
+                  <p className="text-4xl font-bold text-primary">{topPlatform}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Based on the latest aggregated video views.</p>
                 </div>
               </div>
             </div>
@@ -460,7 +514,7 @@ function AdminDashboard() {
 
           {/* ── Top Groups and Top Uploaders Charts ──────────── */}
           <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <ChartCard title="Top 10 Groups (by total views)" description="Teams with the most video views aggregate">
+            <ChartCard title="Views by Group" description="Teams with the most video views aggregate">
               {topGroupsData.length === 0 ? (
                 <div className="grid h-full place-items-center text-sm text-muted-foreground">
                   No group views recorded yet
