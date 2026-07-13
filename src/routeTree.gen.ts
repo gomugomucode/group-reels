@@ -17,6 +17,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedGroupsNewRouteImport } from './routes/_authenticated/groups.new'
 import { Route as AuthenticatedGroupsIdRouteImport } from './routes/_authenticated/groups.$id'
+import { Route as AuthenticatedAdminGroupsRouteImport } from './routes/_authenticated/admin.groups'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -57,12 +58,19 @@ const AuthenticatedGroupsIdRoute = AuthenticatedGroupsIdRouteImport.update({
   path: '/groups/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminGroupsRoute =
+  AuthenticatedAdminGroupsRouteImport.update({
+    id: '/groups',
+    path: '/groups',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/admin/groups': typeof AuthenticatedAdminGroupsRoute
   '/groups/$id': typeof AuthenticatedGroupsIdRoute
   '/groups/new': typeof AuthenticatedGroupsNewRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -71,6 +79,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/admin/groups': typeof AuthenticatedAdminGroupsRoute
   '/groups/$id': typeof AuthenticatedGroupsIdRoute
   '/groups/new': typeof AuthenticatedGroupsNewRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -82,6 +91,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/admin/groups': typeof AuthenticatedAdminGroupsRoute
   '/_authenticated/groups/$id': typeof AuthenticatedGroupsIdRoute
   '/_authenticated/groups/new': typeof AuthenticatedGroupsNewRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -93,11 +103,19 @@ export interface FileRouteTypes {
     | '/auth'
     | '/admin'
     | '/dashboard'
+    | '/admin/groups'
     | '/groups/$id'
     | '/groups/new'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/groups/$id' | '/groups/new' | '/admin'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/admin/groups'
+    | '/groups/$id'
+    | '/groups/new'
+    | '/admin'
   id:
     | '__root__'
     | '/'
@@ -105,6 +123,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
+    | '/_authenticated/admin/groups'
     | '/_authenticated/groups/$id'
     | '/_authenticated/groups/new'
     | '/_authenticated/admin/'
@@ -174,14 +193,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGroupsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/groups': {
+      id: '/_authenticated/admin/groups'
+      path: '/groups'
+      fullPath: '/admin/groups'
+      preLoaderRoute: typeof AuthenticatedAdminGroupsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
   }
 }
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminGroupsRoute: typeof AuthenticatedAdminGroupsRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminGroupsRoute: AuthenticatedAdminGroupsRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
 
