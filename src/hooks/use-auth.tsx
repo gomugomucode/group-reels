@@ -83,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (active) void applyUser(nextSession);
       }, 0);
       router.invalidate();
+      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
     });
 
     return () => {
