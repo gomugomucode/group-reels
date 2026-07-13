@@ -6,2274 +6,481 @@ Pasted markdown.md
 File
  now let move to next part whatr are the things that are not done
 
-Based on the audit report, I would not jump into external APIs (YouTube views) yet. There are several core features that should be completed first. Here's the recommended roadmap, ordered by priority.
-
-Phase 1 — Complete Core Functionality (Highest Priority)
-These are the most important missing or incomplete features.
-
-1. Multi-user Group Collaboration ⭐⭐⭐⭐⭐
-Current
-
-Only the group creator can manage the group.
-
-member_names are stored as plain text.
-
-Missing
-
-Actual member accounts.
-
-Invite members by email.
-
-Members can accept invitations.
-
-Multiple users can edit the same group.
-
-Owner can remove members.
-
-Owner can transfer ownership.
-
-Database
-Create:
-
-group_members
---------------
-id
-group_id
-user_id
-role (owner/member)
-joined_at
-This should replace the member_names array over time.
-
-2. Proper Permissions ⭐⭐⭐⭐⭐
-Currently:
-
-Owner = CRUD
-
-Admin = CRUD
-
-Missing:
-
-Owner
-✔ Edit group
-✔ Delete group
-✔ Invite members
-
-Member
-✔ Add video
-✔ Edit own video
-✖ Delete group
-✖ Remove members
-
-Admin
-Everything
-3. Forgot Password ⭐⭐⭐⭐⭐
-Missing
-
-Forgot Password page
-
-Reset Password page
-
-Email flow
-
-4. Analytics Table Usage ⭐⭐⭐⭐☆
-Currently
-
-Charts are calculated in React.
-
-Should become
-
-Dashboard
-
-↓
-
-Analytics Table
-
-↓
-
-Charts
-Much faster.
-
-5. Server-side Pagination ⭐⭐⭐⭐☆
-Currently
-
-Load ALL Groups
-
-Load ALL Videos
-
-Load ALL Users
-Should become
-
-?page=1
-
-&limit=10
-Phase 2 — Better User Experience
-6. Export
-Admin should export
-
-CSV
-
-Excel
-
-Groups
-
-Users
-
-Video Links
-
-Analytics
-
-7. Notifications Center
-Instead of only Toasts
-
-🔔 Notifications
-
-Group Updated
-
-Member Joined
-
-Video Added
-
-Invite Accepted
-8. Activity Logs
-Example
-
-Today
-
-Ram added YouTube Video
-
-Hari deleted TikTok Video
-
-Sita edited Instagram Link
-Admin can audit everything.
-
-9. Invite Members
-Instead of typing names
-
-Invite
-
-abc@gmail.com
-
-↓
-
-Email
-
-↓
-
-Accept
-
-↓
-
-Join Group
-10. Profile Page
-Users should edit
-
-Name
-
-Avatar
-
-Password
-
-Email
-
-Phase 3 — Missing Features
-11. File Upload
-Instead of only links
-
-Support
-
-Thumbnail
-
-Logo
-
-Banner
-
-Profile Picture
-Use Supabase Storage.
-
-12. Dashboard Improvements
-Add
-
-Recent Activity
-
-Top Platform
-
-Last Uploaded
-
-Pending Links
-
-Invalid Links
-
-Growth
-13. Search Improvements
-Current
-
-Simple search
-
-Missing
-
-Search
-
-Platform
-
-Status
-
-Date
-
-Owner
-
-Created After
-
-Created Before
-14. Real Analytics
-After everything above
-
-Use
-
-YouTube API
-
-Vimeo API
-
-Later
-
-Instagram Graph API
-
-Facebook Graph API
-
-TikTok API
-
-15. Public Team Page
-Every team gets
-
-/team/abc
-
-Shows
-
-Logo
-
-Members
-
-Socials
-
-Videos
-Phase 4 — Nice to Have
-Email Invitations
-
-Dashboard Widgets
-
-Light Theme
-
-PWA
-
-Offline Mode
-
-Mobile Navigation
-
-Keyboard Shortcuts
-
-Audit Logs
-
-Advanced Filters
-
-Bulk Edit
-
-Bulk Delete
-
-Recommended Development Order
-Phase	Feature	Priority
-1	Group Members Table & Collaboration	⭐⭐⭐⭐⭐
-1	Permission System (Owner/Member/Admin)	⭐⭐⭐⭐⭐
-1	Forgot Password Flow	⭐⭐⭐⭐⭐
-1	Analytics Table Integration	⭐⭐⭐⭐☆
-1	Pagination	⭐⭐⭐⭐☆
-2	Invite Members	⭐⭐⭐⭐☆
-2	Activity Logs	⭐⭐⭐⭐☆
-2	Export CSV/Excel	⭐⭐⭐⭐☆
-2	User Profile Page	⭐⭐⭐☆☆
-3	Supabase Storage (logos/thumbnails)	⭐⭐⭐☆☆
-3	Public Team Pages	⭐⭐⭐☆☆
-3	Real Platform Analytics (YouTube/Vimeo)	⭐⭐⭐☆☆
-4	PWA, Light Theme, Advanced UX	⭐⭐☆☆☆
-My recommendation
-The next feature to build should be Multi-user Group Collaboration. Right now, the application is effectively a single-owner system because team members are just text entries. Converting them into actual users with a group_members table, invitations, and role-based permissions is the biggest architectural improvement and provides the foundation for future features like activity logs, notifications, and real collaboration. After that, implement the analytics improvements and external platform integrations.
-
-
-now give me a ,mastert pompt to do irt
-
-If you're continuing in Lovable, Cursor, or Claude Code, you want the AI to extend the existing project, not rebuild it. The prompt below tells the AI to preserve the current architecture, reuse existing code, and implement the next phase only.
-
-Master Prompt – Phase 1: Multi-User Collaboration & Permission System
-You are the lead Software Architect and Senior Full-Stack Engineer for this project.
-
-This project already exists and has a working codebase.
-
-IMPORTANT:
-Do NOT rebuild, replace, or refactor working features unless absolutely necessary. Your job is to extend the existing architecture while preserving the current design, components, database structure, routing, authentication, and UI consistency.
-
-Before making any changes:
-
-Analyze the existing implementation.
-
-Reuse existing components, hooks, layouts, services, and database queries.
-
-Do not duplicate functionality.
-
-Follow the current coding style and folder structure.
-
-Keep the UI/UX consistent with the rest of the application.
-
-Current Project Status
-The following features are already implemented and should remain unchanged unless required for integration:
-
-Supabase Authentication
-
-User Registration/Login
-
-Admin Dashboard
-
-Group CRUD
-
-Video Link CRUD
-
-Social Media Links
-
-URL Validation
-
-Platform Detection
-
-Search & Filtering
-
-Charts
-
-Role-based authentication (Admin/User)
-
-Responsive UI
-
-Notifications
-
-Row Level Security (RLS)
-
-The current system stores team members as a simple member_names array, meaning only the group creator can manage the group.
-
-The goal of this phase is to transform the application into a true collaborative platform.
-
-Objective
-Implement a complete Multi-User Group Collaboration System.
-
-This should become the new permission architecture for the application.
-
-Database Changes
-Create a new table:
-
-group_members
-
-Columns:
-
-id (UUID Primary Key)
-
-group_id (FK → groups.id)
-
-user_id (FK → auth.users.id)
-
-role (owner/member)
-
-invited_by
-
-invitation_status
-
-joined_at
-
-created_at
-
-updated_at
-
-Create all:
-
-Foreign Keys
-
-Indexes
-
-Constraints
-
-Cascade Deletes
-
-Updated_at Trigger
-
-Generate Supabase SQL migrations.
-
-Migration Strategy
-Do NOT remove the existing member_names field immediately.
-
-Instead:
-
-Keep backward compatibility.
-
-Continue displaying existing member names.
-
-Allow migration to real members.
-
-Future updates should use group_members.
-
-No data should be lost.
-
-Invitation System
-Implement a complete invitation workflow.
-
-Owner can:
-
-Invite users by email.
-
-Cancel invitation.
-
-Resend invitation.
-
-Remove members.
-
-Transfer ownership.
-
-Invited user can:
-
-View pending invitations.
-
-Accept invitation.
-
-Reject invitation.
-
-When accepted:
-
-Create a record in group_members.
-
-Update invitation status.
-
-Refresh dashboards automatically.
-
-Permission System
-Implement Role-Based Access Control.
-
-Roles:
-
-Owner
-
-Can:
-
-Edit group
-
-Delete group
-
-Invite members
-
-Remove members
-
-Transfer ownership
-
-Manage social links
-
-Manage every video
-
-Member
-
-Can:
-
-View group
-
-Add video links
-
-Edit own video links
-
-Delete own video links
-
-View analytics
-
-Cannot:
-
-Delete group
-
-Invite users
-
-Remove members
-
-Transfer ownership
-
-Change group settings
-
-Admin
-
-Has unrestricted access.
-
-Permissions must be enforced:
-
-UI
-
-API
-
-Supabase Row Level Security
-
-Never rely only on frontend permission checks.
-
-Update Existing Features
-Modify the existing pages instead of creating duplicate ones.
-
-Update:
-
-Dashboard
-
-Group Detail Page
-
-Admin Dashboard
-
-Member Management
-
-Group CRUD
-
-Video CRUD
-
-Analytics
-
-Every feature should recognize multiple collaborators.
-
-New UI Components
-Create reusable components only if necessary.
-
-Possible components:
-
-Member List
-
-Invite Member Dialog
-
-Pending Invitations
-
-Group Permissions Panel
-
-Transfer Ownership Dialog
-
-Remove Member Dialog
-
-Use existing design system.
-
-Notifications
-Notify users when:
-
-Invitation received
-
-Invitation accepted
-
-Invitation rejected
-
-Member removed
-
-Ownership transferred
-
-Reuse existing notification system.
-
-React Query
-Update all existing hooks.
-
-Invalidate cache automatically after:
-
-Invite
-
-Accept
-
-Reject
-
-Remove
-
-Transfer ownership
-
-Avoid unnecessary refetches.
-
-Security
-Update Row Level Security policies.
-
-Rules:
-
-Owner:
-
-Full access.
-
-Member:
-
-Limited access.
-
-Admin:
-
-Full access.
-
-Guests:
-
-No access.
-
-Prevent privilege escalation.
-
-Prevent users from modifying another group's data.
-
-Validate every mutation server-side.
-
-Performance
-Avoid N+1 queries.
-
-Prefer joins.
-
-Use pagination where appropriate.
-
-Reuse existing queries whenever possible.
-
-Do not load unnecessary data.
-
-Documentation
-When implementation is complete, generate a report including:
-
-Files modified
-
-New files created
-
-Database migrations
-
-RLS changes
-
-New components
-
-Updated hooks
-
-API changes
-
-Permission flow
-
-Testing checklist
-
-Future improvements
-
-Constraints
-Do not rewrite working features.
-
-Do not change the visual design unnecessarily.
-
-Do not duplicate components.
-
-Keep the project modular.
-
-Follow the existing folder structure.
-
-Maintain backward compatibility.
-
-Use TypeScript strictly.
-
-Follow Supabase best practices.
-
-Follow TanStack Query best practices.
-
-Ensure all new functionality is production-ready.
-
-Work incrementally, validating each step before moving to the next. If an existing implementation can be extended instead of replaced, always extend it.
-
-This prompt is designed specifically for an existing codebase. It tells the AI to preserve what's already working, implement the collaboration system incrementally, and keep the project maintainable rather than regenerating large parts of the application.
-
-
-# Implementation Plan — Phase 1: Multi-User Collaboration & Permission System
-
-This document outlines the architecture, database changes, backend server functions, permissions logic, and UI additions required to transform ReelHub into a collaborative multi-user platform.
-
----
-
-## User Review Required
-
-> [!IMPORTANT]
-> - **Database Migrations**: We will create a new table group_members and alter video_links to add created_by (defaulting to the authenticated user ID).
-> - **Cascade Deletion**: Deleting a group cascades to delete all memberships and links. Deleting a user deletes their membership.
-> - **Backward Compatibility**: The existing member_names array in groups is preserved. Dashboard views will display both legacy members and new authenticated collaborators.
-
----
-
-## Proposed Changes
-
-We will perform the database updates via Supabase migrations, create new server functions, add query hooks, and modify the dashboard and group details pages.
-
-### 1. Database Layer (Supabase Migrations)
-
-#### [NEW] [20260713020000_group_collaboration.sql](file:///c:/Users/USER/Desktop/group-reels/supabase/migrations/20260713020000_group_collaboration.sql)
-Creates the membership structure and updates video authorship mapping:
-- Create group_members table with columns:
-  - id UUID Primary Key default gen_random_uuid()
-  - group_id UUID not null references public.groups(id) ON DELETE CASCADE
-  - user_id UUID references auth.users(id) ON DELETE CASCADE (nullable to allow inviting unregistered emails)
-  - email TEXT not null
-  - role TEXT not null CHECK (role IN ('owner', 'member'))
-  - invited_by UUID references auth.users(id) ON DELETE SET NULL
-  - invitation_status TEXT not null CHECK (invitation_status IN ('pending', 'accepted', 'rejected')) default 'pending'
-  - joined_at TIMESTAMPTZ (nullable)
-  - created_at / updated_at TIMESTAMPTZ default now()
-- Add UNIQUE constraint on group_members(group_id, email).
-- Add index on group_members(group_id), group_members(user_id), and group_members(email).
-- Add created_by column to video_links table (references auth.users(id) ON DELETE CASCADE with default value auth.uid()).
-- Migration data population:
-  - Backfill owner row in group_members for all existing groups.
-  - Backfill created_by in video_links to match the owner of their group.
-- Create automated on_group_created database trigger to insert the creator as the 'owner' in group_members upon group creation.
-- Add Row Level Security (RLS) policies for group_members and update policies for groups and video_links to support collaborative roles.
-
----
-
-### 2. Backend API / Server Functions
-
-#### [NEW] [group-collaboration.functions.ts](file:///c:/Users/USER/Desktop/group-reels/src/lib/group-collaboration.functions.ts)
-Contains TanStack Start server functions executing with admin privileges (to bypass RLS safely when checking invites or deleting records):
-- inviteMember: Validates ownership, checks if email is already invited/member, and inserts a pending group_members record. If the email has a registered profile, pre-populates user_id.
-- cancelInvitation / resendInvitation: Allows owners to remove pending invitations or update timestamps.
-- acceptInvitation / rejectInvitation: Allows users matching the invited email to join or dismiss the team invitation.
-- removeMember: Allows owner to delete a joined member's record.
-- transferOwnership: Updates groups.created_by to the new owner's ID, demotes the old owner to 'member' in group_members, and promotes the new owner to 'owner'.
-
----
-
-### 3. Custom React Hooks
-
-#### [MODIFY] [use-data.ts](file:///c:/Users/USER/Desktop/group-reels/src/hooks/use-data.ts)
-Exposes collaborative query hooks:
-- useGroupMembers(groupId): Retrieves list of memberships and invited users.
-- useMyMemberships(userId): Retrieves all accepted groups the user belongs to.
-- usePendingInvitations(email): Retrieves invitations matching the user's email address.
-
----
-
-### 4. UI Layer Updates
-
-#### [MODIFY] [dashboard.tsx](file:///c:/Users/USER/Desktop/group-reels/src/routes/_authenticated/dashboard.tsx)
-- Add a **Pending Invitations** section at the top of the dashboard showing accept/reject controls.
-- Update dashboard data fetching to load the group the user owns OR groups they have joined as a member. If they are members, customize dashboard stats to match their permissions.
-
-#### [MODIFY] [groups.$id.tsx](file:///c:/Users/USER/Desktop/group-reels/src/routes/_authenticated/groups.$id.tsx)
-- Determine UI actions (Edit team, delete group, add/manage videos) based on membership role (Owner vs. Member).
-- Add a **Teammates** section showing:
-  - Legacies: member_names list for backward compatibility.
-  - Active Members: Registered users with their roles.
-  - Pending Invites: Invited emails with cancellation controls.
-- Add a dialog component to invite members by email.
-- Add confirmation dialogs for removing members and transferring ownership.
-
----
-
-## Verification Plan
-
-### Automated Database Verification
-We will run and inspect migrations using standard PostgreSQL tools.
-
-### Manual Verification Checklist
-1. **Invite unregistered user**: Invite a new email. Verify the pending invitation displays under the group details.
-2. **Accept Invitation**: Register as a new user with that email. Dashboard should show the pending invite. Accept it, verify the group dashboard loads, and user can add video links.
-3. **Verify Constraints**: Verify that a Member cannot delete the group, edit social links, or invite other users.
-4. **Edit Own Videos**: Verify that a Member can edit/delete video links they created, but cannot modify video links created by the Owner or other Members.
-5. **Transfer Ownership**: Transfer ownership from Owner to Member. Verify role labels swap in UI and previous Owner now has restricted permissions.  mnow let do anopther things how to logina dns admin  adn in admin dashboard showng the chart according to vierws and now can i integrate teh video views and showing the views in the graph giv eme the master prompt
-
-Yes. This should be the next major phase, but I recommend expanding it beyond just "show video views." Build a Real Analytics System that fetches actual platform statistics and powers the Admin Dashboard.
-
-Since you're using Supabase + Lovable, here's a production-oriented master prompt.
-
-Master Prompt – Phase 2: Real Platform Analytics & View Tracking
-You are the lead Software Architect and Senior Full Stack Engineer continuing development of the existing ReelHub application.
-
-IMPORTANT
-This is an existing production-quality project.
-
-Do NOT rebuild anything.
-
-Do NOT replace working components.
-
-Extend the current architecture only.
-
-Reuse:
-
-Existing database
-
-Existing React components
-
-Existing hooks
-
-Existing layouts
-
-Existing dashboard
-
-Existing charts
-
-Existing authentication
-
-Existing permission system
-
-Existing Supabase project
-
-Maintain the current UI/UX.
-
-Objective
-Replace the current analytics system (which is based on counting links) with a Real Video Analytics System that displays actual video statistics from supported platforms.
-
-Initially implement support for YouTube only, because it is the most reliable public API.
-
-Design the system so Vimeo, Facebook, Instagram, and TikTok can be added later without changing the architecture.
-
-Platform Support
-Phase 2
-
-Supported:
-
-✅ YouTube
-
-Future-ready:
-
-Vimeo
-
-Facebook
-
-Instagram
-
-TikTok
-
-The architecture must support adding new providers later.
-
-Authentication
-The current admin system already exists.
-
-Review it before modifying anything.
-
-If an admin login does not exist, implement it using the existing role-based system.
-
-Admin authentication must continue using Supabase Authentication.
-
-Never create a separate admin login system.
-
-Use the existing profiles and user_roles tables.
-
-Database Changes
-Extend the existing schema.
-
-Do NOT create duplicate tables.
-
-Update video_links.
-
-Add columns:
-
-youtube_video_id
-
-last_synced
-
-last_view_count
-
-last_like_count
-
-last_comment_count
-
-last_fetched_at
-
-sync_status
-
-api_error
-
-Add indexes where appropriate.
-
-Create a new table:
-
-video_metrics_history
-
-Columns
-
-id
-
-video_link_id
-
-views
-
-likes
-
-comments
-
-recorded_at
-
-Purpose
-
-Store historical snapshots so dashboard charts can display growth over time instead of only the latest value.
-
-Analytics Engine
-Create a server-side analytics service.
-
-Responsibilities:
-
-Extract YouTube Video ID automatically.
-
-Validate IDs.
-
-Call the YouTube Data API v3.
-
-Retrieve:
-
-View Count
-
-Like Count
-
-Comment Count
-
-Published Date
-
-Channel Name
-
-Thumbnail
-
-Duration
-
-Update video_links.
-
-Insert a history record into video_metrics_history.
-
-Never expose API keys to the frontend.
-
-All API requests must execute server-side.
-
-Background Sync
-Implement a scheduled synchronization system.
-
-Options:
-
-Supabase Edge Functions
-
-or
-
-Supabase Cron
-
-Requirements:
-
-Automatically refresh statistics.
-
-Do not fetch on every page load.
-
-Recommended schedule:
-
-Every 6 hours.
-
-Only synchronize valid YouTube videos.
-
-Skip invalid videos.
-
-Retry failed requests.
-
-Log failures.
-
-Dashboard Updates
-Update the existing Admin Dashboard.
-
-Do not redesign it.
-
-Replace mock calculations.
-
-Dashboard Cards
-
-Total Views
-
-Total Likes
-
-Total Comments
-
-Average Views
-
-Most Viewed Video
-
-Most Active Group
-
-Total Valid Videos
-
-Total Invalid Videos
-
-Charts
-
-Views by Platform
-
-Views by Group
-
-Views Growth Over Time
-
-Top 10 Videos
-
-Top 10 Groups
-
-Most Active Uploaders
-
-Daily Growth
-
-Monthly Growth
-
-All charts must use real database values.
-
-No mock data.
-
-Group Dashboard
-Update existing dashboard.
-
-Each group should display
-
-Total Views
-
-Total Likes
-
-Total Comments
-
-Top Performing Video
-
-Newest Video
-
-Recent Growth
-
-Platform Breakdown
-
-Video Performance Table
-
-Each video row
-
-Thumbnail
-
-Title
-
-Platform
-
-Views
-
-Likes
-
-Comments
-
-Last Synced
-
-Sync Status
-
-Video Detail
-Expand the existing video card.
-
-Display
-
-Thumbnail
-
-Views
-
-Likes
-
-Comments
-
-Published Date
-
-Channel Name
-
-Sync Time
-
-Refresh Button
-
-Refresh should trigger only one video sync.
-
-Analytics Queries
-Move expensive calculations into PostgreSQL.
-
-Use
-
-Views
-
-Materialized Views
-
-Aggregated Queries
-
-Do not calculate everything in React.
-
-Use React Query only for fetching.
-
-Security
-Store YouTube API Key only in Supabase Secrets.
-
-Never expose API keys.
-
-Validate every API response.
-
-Prevent abuse.
-
-Rate-limit manual refresh.
-
-Permissions
-Owner
-
-Can refresh only own videos.
-
-Member
-
-Can view analytics.
-
-Cannot refresh.
-
-Admin
-
-Can refresh any video.
-
-Can trigger full synchronization.
-
-Can view global analytics.
-
-Settings Page
-Create an Analytics Settings page.
-
-Admin only.
-
-Display
-
-YouTube API Status
-
-Last Synchronization
-
-Successful Requests
-
-Failed Requests
-
-Quota Usage
-
-Manual Full Sync Button
-
-Error Handling
-If API quota exceeded
-
-Show warning.
-
-If video deleted
-
-Mark video invalid.
-
-If private
-
-Mark private.
-
-If unavailable
-
-Log reason.
-
-Display proper badge.
-
-Environment Variables
-Add
-
-YOUTUBE_API_KEY
-
-SUPABASE_URL
-
-SUPABASE_ANON_KEY
-
-SUPABASE_SERVICE_ROLE_KEY
-
-Document all variables.
-
-Documentation
-Generate:
-
-Architecture Diagram
-
-Analytics Flow
-
-Database Changes
-
-Cron Configuration
-
-API Flow
-
-Security Flow
-
-Deployment Notes
-
-Testing Guide
-
-Final Deliverables
-When implementation is complete provide:
-
-SQL migrations
-
-Edge Functions
-
-Cron configuration
-
-Updated database schema
-
-Updated hooks
-
-Updated dashboard
-
-Updated charts
-
-New reusable components
-
-Testing checklist
-
-Deployment guide
-
-Constraints
-Never rewrite working code.
-
-Reuse existing components.
-
-Maintain current UI.
-
-Use TypeScript.
-
-Use Supabase best practices.
-
-Optimize all queries.
-
-Use React Query.
-
-Keep everything modular.
-
-Production-ready code only.
-
-Implement incrementally and verify each step before proceeding to the next.
-
-One important note before you implement this
-The YouTube Data API v3 only returns statistics for public YouTube videos. It cannot fetch view counts for Instagram, Facebook, or TikTok videos unless you own or have authorized access to the corresponding accounts through their official APIs.
-
-A practical roadmap is:
-
-Phase 2A: YouTube real-time analytics (views, likes, comments, thumbnails, channel info).
-
-Phase 2B: Historical tracking and growth charts using video_metrics_history.
-
-Phase 2C: Optional integration with Vimeo, then Meta (Facebook/Instagram) and TikTok APIs using OAuth for owned accounts.
-
-This gives you accurate, scalable analytics while keeping the architecture ready for additional platforms later.
-
-
 Today 11:52 AM
-i wna to add my collage anme i mena butwal kalika campus BKC in janding page home page bkc content creation also fopr meta seo so giv eme prompot to do taht
-
-That's a great idea. Since this project is specifically for Butwal Kalika Campus (BKC), the landing page should clearly establish the brand and also be optimized for SEO.
-
-Below is a master prompt you can give to Lovable/Cursor/Claude Code.
-
-Master Prompt – Brand the Website for Butwal Kalika Campus (BKC) & Improve Landing Page + SEO
-You are continuing development of an existing React + TanStack + Supabase application.
-
-Do NOT redesign the application from scratch.
-
-Do NOT modify existing functionality.
-
-Your task is only to improve the Landing Page (Home Page) and the SEO while keeping the existing design system, color palette, and component architecture.
-
-Objective
-Transform the landing page into the official platform for Butwal Kalika Campus (BKC) student content creators.
-
-The website should look like an official digital platform where students can collaborate, manage, and analyze their social media video content.
-
-Maintain a modern, premium, and professional university branding style.
-
-Branding
-Use the following organization throughout the landing page.
-
-Official Name
-
-Butwal Kalika Campus
-
-Short Name
-
-BKC
-
-Location
-
-Butwal-10, Rupandehi, Nepal
-
-Website
-
-https://btlkalikacampus.edu.np
-
-Brand Identity
-
-BKC Content Creator Hub
-
-OR
-
-BKC Creator Studio
-
-OR
-
-BKC Media Collaboration Platform
-
-Use whichever best fits the existing UI.
-
-Hero Section
-Replace the generic landing page with content specific to Butwal Kalika Campus.
-
-Hero Title
-
-Empowering Student Content Creators at Butwal Kalika Campus
-
-Subtitle
-
-Create, organize, collaborate, and analyze your social media video content in one professional platform designed exclusively for BKC students.
-
-Primary Button
-
-Get Started
-
-Secondary Button
-
-Explore Features
-
-Background
-
-Keep existing design but enhance it with subtle educational and digital creator visuals.
-
-About Section
-Create a new section.
-
-Title
-
-About BKC Creator Hub
-
-Content
-
-The BKC Creator Hub is a collaborative digital platform developed for students of Butwal Kalika Campus to manage, organize, and monitor their social media content across multiple platforms.
-
-Whether you're creating educational videos, promotional campaigns, campus event coverage, or creative media projects, this platform helps teams collaborate efficiently while tracking performance and engagement.
-
-Features Section
-Show feature cards.
-
-Examples
-
-🎥 Video Link Management
-
-👥 Team Collaboration
-
-📊 Real-Time Analytics
-
-🔐 Secure Authentication
-
-📱 Multi-Platform Support
-
-⚡ Smart Dashboard
-
-🏆 Performance Tracking
-
-🎓 Built for BKC Students
-
-Reuse existing feature cards if available.
-
-Why Choose BKC Creator Hub
-Create a professional section explaining:
-
-Centralized video management
-
-Easy collaboration
-
-Performance analytics
-
-Secure access
-
-Modern dashboard
-
-Built for academic projects
-
-Statistics Section
-Create animated counters.
-
-Examples
-
-Student Teams
-
-Videos Managed
-
-Platforms Supported
-
-Active Collaborations
-
-Use placeholder values if real data is unavailable.
-
-Call To Action
-Heading
-
-Start Collaborating Today
-
-Text
-
-Join the official Butwal Kalika Campus Creator Hub and manage your team's content with confidence.
-
-Button
-
-Sign Up
-
-Footer
-Update footer.
-
-Include
-
-Butwal Kalika Campus
-
-Butwal-10, Rupandehi
-
-Website
-
-https://btlkalikacampus.edu.np
-
-Email placeholder
-
-Social links placeholders
-
-Copyright
-
-© 2026 Butwal Kalika Campus (BKC). All Rights Reserved.
-
-SEO
-Update all metadata.
-
-Title
-
-BKC Creator Hub | Butwal Kalika Campus Video Content Management Platform
-
-Meta Description
-
-BKC Creator Hub is the official collaborative video content management platform for Butwal Kalika Campus. Students can organize, manage, collaborate, and analyze social media content across YouTube, Facebook, Instagram, TikTok, and more.
-
-Keywords
-
-Butwal Kalika Campus
-
-BKC
-
-BKC Creator Hub
-
-BKC Content Management
-
-College Content Platform Nepal
-
-Student Video Management
-
-Social Media Analytics
-
-Video Collaboration Platform
-
-Campus Media
-
-Educational Content Management
-
-Open Graph
-
-og
-
-BKC Creator Hub
-
-og
-
-Official collaborative content management platform for Butwal Kalika Campus.
-
-og
-
-website
-
-og
-
-Use the existing hero/banner image if available.
-
-Twitter Card
-
-summary_large_image
-
-Canonical URL
-
-https://btlkalikacampus.edu.np
-
-Generate structured metadata compatible with React and TanStack Start.
-
-Structured Data (JSON-LD)
-Generate JSON-LD for:
-
-Organization
-
-Name
-
-Butwal Kalika Campus
-
-Alternate Name
-
-BKC
-
-URL
-
-https://btlkalikacampus.edu.np
-
-Address
-
-Butwal-10, Rupandehi, Nepal
-
-Generate WebSite schema.
-
-Generate SoftwareApplication schema describing the BKC Creator Hub.
-
-Accessibility
-Improve semantic HTML.
-
-Use proper heading hierarchy.
-
-Add alt text.
-
-Improve ARIA labels where appropriate.
-
-Performance
-Do not increase bundle size unnecessarily.
-
-Lazy-load heavy assets.
-
-Optimize images.
-
-Constraints
-Do not modify authentication.
-
-Do not modify dashboards.
-
-Do not change backend functionality.
-
-Only improve:
-
-Landing page
-
-Branding
-
-Footer
-
-SEO
-
-Metadata
-
-Accessibility
-
-Homepage content
-
-Reuse existing components whenever possible.
-
-Maintain the existing design language and responsiveness.
-
-The final result should feel like an official digital platform representing Butwal Kalika Campus while remaining clean, modern, and professional.
-
-This prompt will make the site feel like an official BKC Creator Hub instead of a generic video management application, while also improving discoverability through proper SEO metadata, Open Graph tags, and structured data.
-
-
-i integrate the supabnase but not created the admin how cna i creazt ehte admin
-
-Since you're using Supabase Auth, users are created automatically in auth.users, but admins are not created automatically. Your audit report indicates that your project already uses a user_roles table with values like admin and user.
-
-Step 1: Create your account normally
-Register through your application using your email, for example:
-
-Email: your-email@example.com
-Password: ********
-Step 2: Find your User ID
-Open your Supabase Dashboard:
-
-Authentication → Users
-
-Find your account and copy the UUID (User ID).
-
-Example:
-
-3d7d7b5d-2d65-4a4b-a51d-xxxxxxxxxxxx
-Step 3: Open SQL Editor
-Go to:
-
-Supabase Dashboard
-↓
-
-SQL Editor
-
-↓
-
-New Query
-Step 4: Insert Admin Role
-If your project uses the user_roles table described in your audit, run:
-
-INSERT INTO public.user_roles (user_id, role)
-VALUES (
-'YOUR_USER_UUID',
-'admin'
-);
-Example:
-
-INSERT INTO public.user_roles (user_id, role)
-VALUES (
-'3d7d7b5d-2d65-4a4b-a51d-xxxxxxxxxxxx',
-'admin'
-);
-Step 5: Verify
-Run:
-
-SELECT *
-FROM public.user_roles;
-You should see something like:
-
-user_id	role
-3d7d7b5d-...	admin
-Step 6: Log Out and Log In Again
-Your app likely reads roles when the session is created. After adding the role:
-
-Logout
-
-Login again
-
-You should now have access to the admin dashboard.
-
-If You Already Have a "user" Role
-If your registration trigger already inserted:
-
-user
-then don't delete it. Your table supports multiple roles per user, so you can have both:
-
-user_id	role
-UUID	user
-UUID	admin
-If You Don't Have user_roles
-Run this query to check:
-
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema = 'public';
-If there is no user_roles table, then your role system is different and you'll need to see how roles are stored.
-
-I can help you identify the exact method
-From your audit, it looks like roles are stored in public.user_roles, but to be certain, please send either:
-
-a screenshot of your Supabase → Table Editor, or
-
-the SQL for your user_roles table, or
-
-the output of:
-
-SELECT * FROM public.user_roles;
-Then I can give you the exact SQL needed for your project.
-
-
-image(7).png
  how can i creaste the admin from here
 
-From your screenshot, there are currently no users in your Supabase project.
+Based on everything you've shared, this is no longer a Supabase problem. It's an application authorization problem.
 
-"No users in your project"
+The evidence:
 
-This means you cannot create an admin yet because there isn't any user account to assign the admin role to.
+✅ You can log in.
 
-Step 1: Create the first user
-Run your application locally and register a normal account using your app.
+✅ Your user exists in Supabase.
 
-For example:
+✅ You changed the role to admin.
 
-Email: admin@bkc.edu.np
+❌ /admin redirects to /auth.
 
-Password: YourStrongPassword123!
+❌ After login, you still see the regular user dashboard.
 
-After successful registration, refresh Authentication → Users. You should see your user listed.
+That means the frontend is not recognizing your admin role, or the admin route is protected incorrectly.
 
-Step 2: Make that user an admin
-If your project uses the user_roles table (as shown in your audit report), go to:
+Step 1: Verify the role is actually stored
+Run these SQL queries and make sure the results are correct:
 
-SQL Editor → New Query
+SELECT id, email, role
+FROM public.profiles;
+and
 
-First, find your user ID:
-
-SELECT id, email
-FROM auth.users;
-Then assign the admin role:
-
-INSERT INTO public.user_roles (user_id, role)
-VALUES (
-'PASTE_USER_UUID_HERE',
-'admin'
-);
-If a user role already exists, keep it. Your user can have both:
-
-user_id	role
-UUID	user
-UUID	admin
-If your app won't let you register
-If the application is not working yet, you can create a user directly from Supabase.
-
-Go to:
-
-Authentication → Users
-
-Then click the Invite user or Add user button (top right, if available in your dashboard version).
-
-Create:
-
-Email
-
-Password
-
-Auto Confirm Email = Enabled
-
-Then assign the admin role using SQL as shown above.
-
-Let's verify your database
-Please run these two SQL queries and send me the results:
-
-1. Check your users
-SELECT id, email
-FROM auth.users;
-2. Check your roles
 SELECT *
 FROM public.user_roles;
-Or send me a screenshot of your Table Editor showing the tables in the public schema (especially whether user_roles exists).
+Your admin user should look something like:
 
-From your audit, I expect the flow to be:
-
-Register User
-        ↓
-auth.users
-        ↓
-handle_new_user() trigger
-        ↓
-profiles
-        ↓
-user_roles (role = user)
-        ↓
-Run one SQL query
-        ↓
-role = admin
-        ↓
-Login again
-        ↓
-Admin Dashboard
-If you share the results of those SQL queries, I can give you the exact command for your database.
-
-
-
-YourStrongPassword123
-
-Start writing
-
-YourStrongPassword123!
-
-
-Failed to run sql query: ERROR:  42P01: relation "public.user_roles" does not exist
-LINE 4: INSERT INTO public.user_roles (user_id, role)
-                    ^SELECT id, email
-FROM auth.users;
-
-INSERT INTO public.user_roles (user_id, role)
-VALUES (
-'95d023cd-28f8-4cef-838c-2b362c42ca28',
-'admin'
-);
-
-This error tells us something important:
-
-ERROR: relation "public.user_roles" does not exist
-
-That means your database does not have the user_roles table, even though your earlier audit described one. This usually means one of these is true:
-
-The migration that creates user_roles was never applied.
-
-You're connected to a different Supabase project than the one used during development.
-
-Your project stores admin roles in a different way (for example, in profiles.is_admin or auth.users.raw_user_meta_data).
-
-Step 1: Check what tables actually exist
-Run this query:
-
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema = 'public'
-ORDER BY table_name;
-Copy and paste the results here.
-
-Step 2: Check the profiles table
-Run:
-
-SELECT *
-FROM public.profiles
-LIMIT 5;
-This will tell us whether your project stores an is_admin column or something similar.
-
-Step 3: Check your migrations
-In the Supabase Dashboard, go to:
-
-Database → Migrations
-
-or, if you're using the CLI, look in:
-
-supabase/migrations/
-See if there's a migration that creates:
-
-user_roles
-
-app_role
-
-has_role()
-
-Most likely scenario
-From your audit, I expected these objects to exist:
-
-user_roles
-
-app_role enum
-
-has_role() function
-
-Since none of them exist, it looks like your local code and your Supabase database are out of sync. The database hasn't had all of the project's migrations applied.
-
-I can help you fix it
-Please send me either:
-
-The output of:
-
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema = 'public';
+email	role
+admin@bkc.edu.np	admin
 or
 
-A screenshot of:
+user_id	role
+UUID	admin
+Step 2: Find how the app checks admin status
+Search your project for:
 
-Supabase → Database → Table Editor
+role === 'admin'
+then search for:
 
-showing all your tables.
+user_roles
+then:
 
-From that, I'll tell you the exact way to create the admin account for your actual database schema, without guessing.
+profiles.role
+then:
 
+has_role
+One of those should exist.
 
-PS C:\Users\USER\Desktop\group-reels> supabase link --project-ref xmemoihpssvhlkzulxbz
-supabase : The term 'supabase' is not recognized as the name of a cmdlet, function, script 
-file, or operable program. Check the spelling of the name, or if a path was included, verify 
-that the path is correct and try again.
-At line:1 char:1
-+ supabase link --project-ref xmemoihpssvhlkzulxbz
-+ ~~~~~~~~
-    + CategoryInfo          : ObjectNotFound: (supabase:String) [], CommandNotFoundException
-    + FullyQualifiedErrorId : CommandNotFoundException
- 
-PS C:\Users\USER\Desktop\group-reels> supabase migration new new-migration
-supabase : The term 'supabase' is not recognized as the name of a cmdlet, function, script 
-file, or operable program. Check the spelling of the name, or if a path was included, verify 
-that the path is correct and try again.
-At line:1 char:1
-+ supabase migration new new-migration
-+ ~~~~~~~~
-    + CategoryInfo          : ObjectNotFound: (supabase:String) [], CommandNotFoundException    
-    + FullyQualifiedErrorId : CommandNotFoundException
+If none exist, the app has no real admin check.
 
-PS C:\Users\USER\Desktop\group-reels> supabase db push
-supabase : The term 'supabase' is not recognized as the name of a cmdlet, function, script 
-file, or operable program. Check the spelling of the name, or if a path was included, verify    
-that the path is correct and try again.
-At line:1 char:1
-+ supabase db push
-+ ~~~~~~~~
-    + CategoryInfo          : ObjectNotFound: (supabase:String) [], CommandNotFoundException    
-    + FullyQualifiedErrorId : CommandNotFoundException
+Step 3: Check your protected route
+The /admin route should not only check if the user is logged in.
 
-PS C:\Users\USER\Desktop\group-reels> 
+It should do something like:
 
-The error is straightforward:
+if (!user) {
+  redirect('/auth')
+}
 
-supabase : The term 'supabase' is not recognized...
+const profile = await getProfile(user.id)
 
-This means the Supabase CLI is not installed (or it's not in your system PATH).
+if (profile.role !== 'admin') {
+  redirect('/dashboard')
+}
+If it's redirecting straight to /auth, then the auth middleware isn't finding your session or is incorrectly protecting the route.
 
-Option 1 (Recommended): Install the Supabase CLI
-Check if you have Node.js
-Run:
+The quickest way to fix this
+At this point, I don't want to guess. I want to see exactly how your app is implemented.
 
-node -v
-npm -v
-If both commands return versions, continue.
+Please upload or paste these files:
 
-Install the CLI globally
-npm install -g supabase
-After it finishes, verify:
+src/routes/admin.tsx (or wherever your admin page is)
 
-supabase --version
-You should see something like:
+src/routes/auth.tsx (or your login page)
 
-2.x.x
-Then your commands will work:
+src/lib/auth-middleware.ts
 
-supabase login
-supabase link --project-ref xmemoihpssvhlkzulxbz
-supabase db push
-Option 2: Use npx (No Global Install)
-If you don't want to install it globally:
+src/lib/auth-attacher.ts
 
-npx supabase --version
-or
+src/hooks/use-auth.ts (or your auth hook, if it exists)
 
-npx supabase login
-If that works, you can use npx supabase instead of supabase.
+Alternatively, if your project is on GitHub, send me the repository link.
 
-Option 3: Install via Scoop (Windows)
-If you use Scoop:
+Why?
+You've already fixed the infrastructure (Supabase, middleware, migrations). The remaining issue is almost certainly 5–10 lines of authorization logic in the frontend or middleware. Once I see those files, I can tell you exactly what to change so:
 
-scoop install supabase
-Option 4: Install via Chocolatey
-choco install supabase
-Before Going Further
-Since your project is already connected to Supabase, I suspect the real issue is that your database schema has never been pushed. The missing user_roles table strongly suggests the migrations haven't been applied.
+Admins log in normally.
 
-Please check your project folder.
-Inside:
+Admins are redirected to /admin.
 
-group-reels/
-└── supabase/
-    └── migrations/
-Do you see SQL files such as:
+/admin is accessible only to admins.
 
-2026xxxxxxxx_initial.sql
-2026xxxxxxxx_auth.sql
-2026xxxxxxxx_roles.sql
-2026xxxxxxxx_group_collaboration.sql
-or is the migrations folder empty?
-
-Tell me these two things:
-What is the output of:
-
-node -v
-npm -v
-Show me the contents of your supabase/migrations folder (a screenshot or file list).
-
-Once I know that, I can tell you whether you need to install the CLI and push migrations, or whether your project was created directly in Supabase and needs a different approach.
-
-
-PS C:\Users\USER\Desktop\group-reels> node -v
->> npm -v
-v24.18.0
-11.16.0
-PS C:\Users\USER\Desktop\group-reels> npm install -g supabase
-
-added 8 packages in 3s
-
-4 packages are looking for funding       
-  run npm fund for details
-PS C:\Users\USER\Desktop\group-reels> supabase --version
-2.109.1
-PS C:\Users\USER\Desktop\group-reels> supabase login
->> supabase link --project-ref xmemoihpssvhlkzulxbz
->> supabase db push
-Hello from Supabase! Press Enter to open browser and login automatically.
-│
-◇
-│
-Here is your login link in case browser did not open https://supabase.com/dashboar1ad6d5d06f665c8db0af3dde37b1b0bfd47d5d5a7b09955794a6357fb018d2de75ad377c7cf141d0cc38a2a3807da21a
-
-│
-◇  Enter your verification code:
-│  5fea1d82
-Token cli_USER@DESKTOP-0BCA8NS_1783923643 created successfully.
-
-You are now logged in. Happy coding!
-Finished supabase link.
-Initialising login role...
-Connecting to remote database...
-Do you want to push these migrations to the remote database?
- • 20260713010314_4b1eb4eb-3932-4891-a45d-b9623aba7cc2.sql
- • 20260713010409_57c48f4e-c952-4b4a-bc9e-26b9226c71eb.sql
- • 20260713020000_group_collaboration.sql
- • 20260713030000_video_analytics.sql    
--26b9226c71eb.sql...
-Applying migration 20260713020000_group_collaboration.sql...
-Applying migration 20260713030000_video_analytics.sql...
-Finished supabase db push.
-PS C:\Users\USER\Desktop\group-reels>    
+The admin dashboard loads all groups, all users, all video links, analytics, and charts, instead of the regular user dashboard.
 
 
 
+admin.tsx
+TypeScript
 
-Excellent! 🎉 Your migrations have now been successfully applied.
+auth.tsx
+TypeScript
+and thisis myu use aurgh import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import type { Session, User } from "@supabase/supabase-js";
+import { useRouter } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
-The important line is:
 
-Applying migration 20260713020000_group_collaboration.sql...
-Applying migration 20260713030000_video_analytics.sql...
-Finished supabase db push.
-This means your database schema should now include the new tables, including group_members and the video analytics tables.
+interface Profile {
+  id: string;
+  username: string;
+  email: string;
+  team_name: string | null;
+  member_names: string[];
+}
 
-Step 1: Register your first user
-Open your application and create an account, for example:
+interface AuthContextValue {
+  session: Session | null;
+  user: User | null;
+  profile: Profile | null;
+  isAdmin: boolean;
+  loading: boolean;
+  refresh: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+async function loadDetails(userId: string) {
+  const [{ data: profile }, { data: roles }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, username, email, team_name, member_names")
+      .eq("id", userId)
+      .maybeSingle(),
+    supabase.from("user_roles").select("role").eq("user_id", userId),
+  ]);
+  const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+  return { profile: profile as Profile | null, isAdmin };
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const applyUser = async (nextSession: Session | null) => {
+    setSession(nextSession);
+    if (nextSession?.user) {
+      const { profile, isAdmin } = await loadDetails(nextSession.user.id);
+      setProfile(profile);
+      setIsAdmin(isAdmin);
+    } else {
+      setProfile(null);
+      setIsAdmin(false);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (active) void applyUser(data.session);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (
+        event !== "SIGNED_IN" &&
+        event !== "SIGNED_OUT" &&
+        event !== "USER_UPDATED"
+      ) {
+        return;
+      }
+      // Defer Supabase calls out of the callback to avoid deadlocks.
+      setTimeout(() => {
+        if (active) void applyUser(nextSession);
+      }, 0);
+      router.invalidate();
+      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+    });
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const refresh = async () => {
+    const { data } = await supabase.auth.getSession();
+    await applyUser(data.session);
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        session,
+        user: session?.user ?? null,
+        profile,
+        isAdmin,
+        loading,
+        refresh,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+} and i donr have othe 2 filews in my website  and i also deleteht euser as adm in in supabase so help me in creaqting it
+
+Great, this code tells us exactly how your app determines admin status.
+
+Your app does NOT use profiles.role. It only checks the user_roles table.
+
+This line is the key:
+
+const [{ data: profile }, { data: roles }] = await Promise.all([
+  supabase
+    .from("profiles")
+    .select("id, username, email, team_name, member_names")
+    .eq("id", userId)
+    .maybeSingle(),
+  supabase.from("user_roles").select("role").eq("user_id", userId),
+]);
+
+const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+So changing profiles.role does nothing for admin access.
+
+Step 1: Create your admin user
+Since you deleted the user, create a new one.
+
+Option A (Recommended)
+Open your website.
+
+Register using:
 
 Email: admin@bkc.edu.np
-
 Password: YourStrongPassword123!
+If email confirmation is disabled, the account will be created immediately.
 
-After registration, check Supabase → Authentication → Users. You should now see your user.
+If you still hit email rate limits, create the user from:
 
-Step 2: Check if user_roles exists
-In the Supabase SQL Editor, run:
+Supabase Dashboard → Authentication → Users → Add User
 
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema = 'public'
-ORDER BY table_name;
-If you see user_roles, proceed to the next step.
+Enable Auto Confirm User if available.
 
-Step 3: Find your User ID
+Step 2: Find the User ID
 Run:
 
 SELECT id, email
 FROM auth.users;
-Copy the UUID of your account.
+Example:
 
-Step 4: Make yourself an admin
+id	email
+95d023cd-28f8-4cef-838c-2b362c42ca28	admin@bkc.edu.np
+Copy the UUID.
+
+Step 3: Give the user the admin role
 Run:
 
 INSERT INTO public.user_roles (user_id, role)
 VALUES (
-'YOUR_USER_UUID',
+'PASTE_THE_UUID_HERE',
 'admin'
 );
-For example:
+Example:
 
 INSERT INTO public.user_roles (user_id, role)
 VALUES (
 '95d023cd-28f8-4cef-838c-2b362c42ca28',
 'admin'
 );
-Then log out of your application and log back in.
+Now verify:
 
-If you still get:
-relation "public.user_roles" does not exist
-then your migrations still did not create the role system, which means the project uses a different authorization model.
+SELECT *
+FROM public.user_roles;
+You should see:
 
-In that case, run this query:
+user_id	role
+95d023cd...	admin
+Step 4: Log out and log back in
+Your AuthProvider reloads roles during login:
 
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema = 'public'
-ORDER BY table_name;
-and paste the results here.
+const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+After logging back in, isAdmin should become true.
 
-I also recommend one improvement
-Instead of manually editing the database every time, add a "Bootstrap Admin" migration. It will automatically make a specified email an admin when the project is initialized.
+One more issue in your code
+Your Profile type is missing the role field, but that's okay because you're not using it.
 
-This avoids manual SQL each time you deploy to a new Supabase project.
+The bigger question is:
 
-I can generate that migration for you so future deployments automatically create the first admin account.
+Where is isAdmin actually used?
 
+Your AuthProvider sets it correctly, but I don't see any code that redirects admins or protects the admin page.
 
-Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
-xmemoihpssvhlkzulxbz.supabase.co/auth/v1/signup?redirect_to=http%3A%2F%2Flocalhost%3A8080:1  Failed to load resource: the server responded with a status of 400 () i get error in singup
+You need something like:
 
-A 400 Bad Request on the Supabase signup endpoint usually means Supabase is rejecting the signup request because of invalid data or project configuration. The browser console line alone isn't enough—we need the actual error message.
+const { isAdmin } = useAuth();
 
-Step 1: Find the real error
-Open Developer Tools → Network.
-
-Go to the Network tab.
-
-Click Sign Up again.
-
-Click the failed request:
-
-/auth/v1/signup
-Open the Response tab.
-
-Copy the JSON response. It will look something like:
-
-{
-  "code": "...",
-  "message": "..."
+if (isAdmin) {
+  navigate({ to: "/admin" });
+} else {
+  navigate({ to: "/dashboard" });
 }
-That message will tell us exactly what's wrong.
+And your /admin route should check:
 
-Step 2: Check your Supabase Auth settings
-In the Supabase Dashboard, go to:
+const { isAdmin, loading } = useAuth();
 
-Authentication → URL Configuration
+if (loading) return <Loading />;
 
-Verify:
-
-Site URL
-
-http://localhost:8080
-If you're developing on Vite's default port, it might instead be:
-
-http://localhost:5173
-Use the port your app is actually running on.
-
-Also add this under Redirect URLs:
-
-http://localhost:8080/**
-(or http://localhost:5173/** if applicable)
-
-Step 3: Check your environment variables
-Verify your .env contains the correct values:
-
-VITE_SUPABASE_URL=https://xmemoihpssvhlkzulxbz.supabase.co
-VITE_SUPABASE_ANON_KEY=your_anon_key
-Make sure you're using the Anon key, not the Service Role key.
-
-Step 4: Check the browser console
-Besides the 400 error, there is usually a more descriptive message such as:
-
-Email rate limit exceeded
-
-Invalid email
-
-Password should be at least 6 characters
-
-Database error saving new user
-
-Database error creating new user
-
-User already registered
-
-Please copy that full message if you see it.
-
-Step 5: Test directly in Supabase
-Go to:
-
-Authentication → Users → Add User (or Invite User, depending on your dashboard version).
-
-Try creating a user there.
-
-If that also fails, the issue is with your Supabase project or database.
-
-If it succeeds, the issue is likely in your application's signup code.
-
-Most likely cause
-Since you just pushed new migrations, one common issue is that the handle_new_user() trigger (or another signup trigger) is failing because it references a table or column that no longer exists or has changed. In that case, Supabase returns a 400 error during signup because it can't complete the database transaction.
-
-Please send me:
-The Response body from the failed /auth/v1/signup request.
-
-The signup code where you call supabase.auth.signUp(...) (or the file containing that function).
-
-With those two pieces, I can identify the exact cause.
-
-
-{"code":"over_email_send_rate_limit","message":"email rate limit exceeded"}
-
-This error is actually good news—it means your application is reaching Supabase correctly.
-
-The error:
-
-{
-  "code": "over_email_send_rate_limit",
-  "message": "email rate limit exceeded"
+if (!isAdmin) {
+  return <Navigate to="/dashboard" />;
 }
-means Supabase is blocking email verification because you've requested too many signup emails in a short period.
 
-Option 1 (Recommended for Development): Disable Email Confirmation
-For local development, you don't need email confirmation.
+return <AdminDashboard />;
+I think I know why you're stuck
+You now have:
 
-Go to Supabase Dashboard.
+✅ Supabase Authentication
 
-Navigate to:
+✅ user_roles table
 
-Authentication → Providers → Email
+✅ isAdmin state in React
 
-(or Authentication → Sign In / Providers, depending on your dashboard version)
+But I haven't seen any code that uses isAdmin to:
 
-Turn OFF:
+redirect to /admin
 
-Confirm email
-or
+protect /admin
 
-Enable email confirmations
-Save the changes.
+show the admin dashboard
 
-Now new users will be created immediately without sending a verification email.
+So even if the role is correct, the app will still behave like a regular user unless those checks are implemented.
 
-Option 2: Wait
-Supabase's free tier limits verification emails.
+To finish this quickly
+Please paste these two files (or their contents):
 
-Wait 30–60 minutes before trying again.
+The file where your routes are defined (often src/routes/__root.tsx, src/router.tsx, or similar).
 
-Option 3: Create the User Manually
-In the Supabase Dashboard:
+The file for your admin page (for example src/routes/admin.tsx or src/routes/_authenticated/admin.tsx).
 
-Authentication → Users → Add User
-
-Create:
-
-Email: admin@bkc.edu.np
-
-Password: YourStrongPassword123!
-
-Enable Auto Confirm User (if available)
-
-This bypasses the email verification rate limit.
-
-Option 4: Improve Your App for Development
-Modify your signup code so it doesn't require email confirmation while you're developing:
-
-const { data, error } = await supabase.auth.signUp({
-  email,
-  password,
-  options: {
-    emailRedirectTo: undefined
-  }
-})
-Then rely on the Supabase setting to auto-confirm users.
-
-Another thing I noticed
-Your project appears to be using Lovable + Supabase, and earlier your database was missing the user_roles table until you pushed migrations. That suggests your setup may still have a few configuration gaps.
-
-I recommend we verify the project end-to-end next.
-
-I can provide a complete Supabase health check (around 15–20 checks) that verifies:
-
-✅ Authentication
-
-✅ Email settings
-
-✅ Environment variables
-
-✅ Database tables
-
-✅ RLS policies
-
-✅ Triggers
-
-✅ Admin role setup
-
-✅ Storage
-
-✅ Edge Functions
-
-✅ API keys
-
-✅ Migrations
-
-✅ Redirect URLs
-
-✅ Dashboard configuration
-
-This usually finds every remaining configuration issue before you continue building features.
+Once I see those, I can tell you the exact changes needed so an admin logs in, is recognized by isAdmin, is redirected to /admin, and sees the global admin dashboard with all groups, users, video links, analytics, and CRUD operations.
 
 
-how can admin login and se all the things donme in the website i mena all the groups and the urls the views and crud operation
+can u giv em teh master prompt to do the above works
 
-Based on your current architecture (React + TanStack + Supabase + RLS), the admin should not have a separate login page. The admin uses the same login page as every other user. The difference is the role assigned to that user.
+Yes. Since your project is already 70–80% complete, the best approach is to extend the existing codebase, not rebuild it. Below is a master prompt that tells your AI coding assistant to review the current project, fix the admin flow, and implement a proper global admin dashboard.
 
-Right now, it sounds like your admin role is not fully implemented, so logging in as an admin won't show the admin dashboard until that's fixed.
+MASTER PROMPT – Complete Admin Authentication, Authorization & Global Admin Dashboard
+You are working on an existing React + TanStack Start + Supabase application called Group Share Hub (BKC Creator Hub).
 
-Recommended Admin Flow
-Register User
-        │
-        ▼
-Supabase Authentication
-        │
-        ▼
-profiles table
-        │
-        ▼
-Assign admin role
-        │
-        ▼
-Login normally
-        │
-        ▼
-Check role
-        │
-        ├── User  → Dashboard
-        │
-        └── Admin → Admin Dashboard
-What the Admin Dashboard Should Show
-After logging in as an admin, the dashboard should provide a complete overview of the platform.
+IMPORTANT:
 
-Dashboard Overview
-Display cards for:
+DO NOT rebuild the application.
+
+DO NOT replace existing authentication.
+
+DO NOT create duplicate pages.
+
+Review the entire existing codebase first.
+
+Reuse existing components, hooks, layouts, API functions, and Supabase integration.
+
+Extend the current implementation.
+
+Phase 1 – Review Existing Code
+Before making changes:
+
+Inspect the complete authentication flow.
+
+Inspect AuthProvider.
+
+Inspect all protected routes.
+
+Inspect middleware.
+
+Inspect route guards.
+
+Inspect admin pages.
+
+Inspect dashboard pages.
+
+Inspect Supabase queries.
+
+Inspect RLS assumptions.
+
+Produce a short report listing:
+
+Existing functionality
+
+Missing functionality
+
+Broken functionality
+
+Files that need modification
+
+Do not start coding until this review is complete.
+
+Phase 2 – Admin Authentication
+The application already stores admin roles in:
+
+public.user_roles
+
+The current AuthProvider already computes:
+
+isAdmin
+Use this value throughout the application.
+
+Do NOT create another admin flag.
+
+Do NOT duplicate role logic.
+
+Login Flow
+After login:
+
+If
+
+isAdmin == true
+Redirect automatically to:
+
+/admin
+Otherwise redirect to:
+
+/dashboard
+Protect Routes
+Only authenticated users may access:
+
+/dashboard
+Only admins may access:
+
+/admin
+If a normal user opens:
+
+/admin
+redirect to
+
+/dashboard
+If an unauthenticated visitor opens
+
+/admin
+redirect to
+
+/auth
+Phase 3 – Global Admin Dashboard
+Replace the current "admin behaves like a user" experience.
+
+The Admin Dashboard must display global platform data, not only the logged-in user's data.
+
+Dashboard Cards
+Show:
 
 Total Users
 
 Total Groups
 
-Total Videos
+Total Members
+
+Total Video Links
 
 Total Views
 
@@ -2281,46 +488,121 @@ Total Likes
 
 Total Comments
 
-Active Groups
-
 Pending Invitations
 
 Invalid Links
 
-Group Management
-Admin should be able to:
+Active Collaborations
+
+Charts
+Build charts from all database records.
+
+Charts required:
+
+Views by Platform
+
+Videos by Platform
+
+Views by Group
+
+Top 10 Groups
+
+Top 10 Videos
+
+Monthly Uploads
+
+Monthly Views
+
+Daily Uploads
+
+Platform Distribution
+
+Group Growth
+
+Use existing analytics tables.
+
+If real analytics exist, use them.
+
+Otherwise aggregate stored analytics.
+
+Phase 4 – User Management
+Create an Admin → Users page.
+
+Features:
+
+View all users
+
+Search users
+
+Edit profile
+
+Change username
+
+Change role
+
+Promote to admin
+
+Remove admin
+
+Delete user
+
+Disable user
+
+Display:
+
+Email
+
+Username
+
+Joined Date
+
+Role
+
+Number of Groups
+
+Number of Videos
+
+Phase 5 – Group Management
+Admin should manage every group.
+
+Features:
 
 View all groups
 
-Search groups
-
-Edit group details
+Edit groups
 
 Delete groups
 
-Disable or enable groups
+Search groups
 
-View team members
+View members
 
-View social media links
+View invitations
 
-View total videos
+View social links
 
-View total views
+View analytics
 
-Example:
+Display:
 
-Team	Members	Videos	Views	Actions
-Team Alpha	5	12	25,430	Edit / Delete
-Team Beta	4	8	10,210	Edit / Delete
-Video Management
-Admin should see every uploaded video.
+Group Name
 
-Columns:
+Owner
+
+Members
+
+Videos
+
+Total Views
+
+Created Date
+
+Phase 6 – Video Management
+Admin can manage every video.
+
+Display:
 
 Thumbnail
-
-Title
 
 Platform
 
@@ -2338,7 +620,7 @@ Comments
 
 Status
 
-Last Synced
+Last Sync
 
 Actions:
 
@@ -2346,551 +628,163 @@ Edit
 
 Delete
 
-Refresh analytics
-
-Analytics Dashboard
-Charts should include:
-
-Views by Platform
-
-Views by Group
-
-Top 10 Videos
-
-Top 10 Groups
-
-Monthly Growth
-
-Daily Uploads
-
-Platform Distribution
-
-These charts should use real analytics data once YouTube integration is complete.
-
-User Management
-Admin should be able to:
-
-View all users
-
-Change roles
-
-Reset passwords
-
-Disable accounts
-
-Delete accounts
-
-View joined groups
-
-Collaboration Management
-Admin should be able to:
-
-View invitations
-
-Remove members
-
-Transfer ownership
-
-View pending requests
-
-Global Search
-Search across:
-
-Groups
-
-Users
-
-Videos
-
-Platforms
-
-URLs
-
-What Needs to Be Implemented
-From your audit, the admin functionality should eventually include:
-
-Full CRUD for all groups
-
-Full CRUD for all video links
-
-View and manage all users
-
-View analytics across all groups
-
-Search and filtering
-
-Charts with real view counts
-
-Permission management
-
-Activity logs
-
-Export to CSV/Excel
-
-Master Prompt for Completing the Admin System
-Use this prompt with your AI coding assistant:
-
-Review the existing project and complete the Admin Management System.
-
-Do not rebuild existing functionality.
-
-Reuse the existing authentication, layouts, components, hooks, routes, and Supabase integration.
-
-Implement a complete role-based admin experience.
-
-Requirements:
-
-1. Admin logs in using the same login page as regular users.
-2. Detect admin role after login.
-3. Redirect admins automatically to /admin.
-4. Redirect normal users to /dashboard.
-5. Build a complete Admin Dashboard with:
-   - Total Users
-   - Total Groups
-   - Total Video Links
-   - Total Views
-   - Total Likes
-   - Total Comments
-   - Platform Distribution
-   - Top Groups
-   - Top Videos
-6. Allow admins to:
-   - View all users
-   - Edit users
-   - Delete users
-   - Change user roles
-   - View all groups
-   - Edit groups
-   - Delete groups
-   - Disable/enable groups
-   - View all video links
-   - Edit video links
-   - Delete video links
-   - Refresh video analytics
-7. Implement global search and filtering.
-8. Use server-side pagination for all admin tables.
-9. Ensure all admin actions are protected by Supabase Row Level Security and role checks.
-10. Reuse existing components and maintain the current UI/UX.
-
-At the end, provide:
-- Database changes
-- RLS policy updates
-- Files modified
-- New components
-- Testing checklist
-One thing to verify first
-Before implementing any of this, confirm how your project stores admin roles. Earlier you discovered that public.user_roles did not exist before your migrations. Run:
-
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema = 'public'
-ORDER BY table_name;
-and also:
-
-SELECT *
-FROM public.profiles
-LIMIT 5;
-If you share those results, I can tell you exactly how to assign the first admin user in your current schema and ensure the admin dashboard is only accessible to authorized users.
-
-
-now how to seet the admin iun supabase so uadmin hacve alkl the access
-
-From everything you've shared, you cannot simply "turn a user into an admin" until we know how your project stores roles. Earlier, your SQL failed because public.user_roles did not exist, which means your current database schema is different from what we expected.
-
-Step 1: Check your current tables
-In the Supabase SQL Editor, run:
-
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema = 'public'
-ORDER BY table_name;
-Paste the results here.
-
-Step 2: Check the profiles table
-Run:
-
-SELECT *
-FROM public.profiles
-LIMIT 5;
-Paste the results here as well.
-
-Step 3: If your project uses a role column
-If you find a column like:
-
-role
-or
-
-is_admin
-then making yourself an admin is as simple as:
-
-UPDATE public.profiles
-SET role = 'admin'
-WHERE email = 'your-email@example.com';
-or
-
-UPDATE public.profiles
-SET is_admin = true
-WHERE email = 'your-email@example.com';
-But don't run those queries yet because we need to confirm your schema first.
-
-If Your Project Doesn't Have Any Admin Role
-If there is no role system at all, you'll need to add one. A common approach is:
-
-ALTER TABLE public.profiles
-ADD COLUMN role text NOT NULL DEFAULT 'user';
-
-UPDATE public.profiles
-SET role = 'admin'
-WHERE email = 'admin@bkc.edu.np';
-Then your application should check profiles.role after login and redirect:
-
-admin → /admin
-
-user → /dashboard
-
-The Fastest Way
-Please send:
-
-The output of:
-
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema = 'public';
-The output of:
-
-SELECT column_name
-FROM information_schema.columns
-WHERE table_name = 'profiles';
-With those two results, I'll give you the exact SQL to make yourself an admin in your current Supabase project.
-
-
-table_name
-profiles
-user_roles
-groups
-analytics
-group_members
-video_links
-video_metrics_history
-analytics_sync_log
-group_analytics_summary
-top_videoscolumn_name
-id
-username
-email
-team_name
-member_names
-created_at
-updated_at
-role  why in admin there is the hey admin add group i wna tin ad in the admin can se the data of all the user video links , views,  crud operation chart showing the titoal views in different platforrm
-
-Perfect—this tells us exactly what's happening.
-
-Your database does have:
-
-✅ user_roles
-
-✅ profiles.role
-
-✅ groups
-
-✅ video_links
-
-✅ analytics
-
-✅ group_members
-
-✅ video_metrics_history
-
-So your project has two possible role systems:
-
-profiles.role
-
-user_roles
-
-Your application is most likely checking profiles.role, because you're seeing the normal dashboard ("Hey Admin, add group") instead of a dedicated admin panel.
-
-What the Admin Should See
-The admin should not have the same dashboard as a normal user.
-
-Instead, the admin should see a Global Admin Dashboard with information from all users, not just their own group.
-
-For example:
-
-Admin Dashboard
-
-────────────────────────────────────────
-
-Total Users           54
-
-Total Groups          18
-
-Total Videos         320
-
-Total Views      1,245,000
-
-Total Likes        82,000
-
-Total Comments      6,200
-
-────────────────────────────────────────
-
-Charts
-
-✓ Views by Platform
-
-✓ Groups by Platform
-
-✓ Top 10 Videos
-
-✓ Top 10 Groups
-
-✓ Monthly Growth
-
-✓ Daily Uploads
-
-────────────────────────────────────────
-
-Tables
-
-Users
-
-Groups
-
-Video Links
-
-Analytics
-
-Activity Logs
-
-────────────────────────────────────────
-
-Actions
-
-Edit
-
-Delete
-
-Disable
-
 Refresh Analytics
 
-Export CSV
+Filters:
 
-Export Excel
-Why You're Seeing "Add Group"
-Your dashboard is probably doing something like:
+Platform
 
-const { data: groups } = useMyGroups(user.id)
-instead of:
+Group
 
-const { data: groups } = useAllGroups()
-So even when you're an admin, it still loads only your own data.
+Status
 
-How It Should Work
-When the user logs in:
+Search:
 
-Login
+URL
 
-↓
+Title
 
-Get Profile
+Phase 7 – Analytics
+Use the existing tables:
 
-↓
+analytics
 
-role
+video_metrics_history
 
-↓
+group_analytics_summary
 
-Admin ?
+top_videos
 
-YES
+Create:
 
-↓
+Global Analytics Dashboard
 
-Load ALL Data
+Show:
 
-↓
+Total Views
 
-Admin Dashboard
+Total Likes
 
-NO
-
-↓
-
-Load ONLY User Data
-
-↓
-
-User Dashboard
-Admin Permissions
-The admin should have full access to:
-
-Users
-View all users
-
-Edit users
-
-Delete users
-
-Change roles
-
-Disable accounts
-
-Groups
-View all groups
-
-Create groups
-
-Edit groups
-
-Delete groups
-
-Search groups
-
-Videos
-View all videos
-
-Edit videos
-
-Delete videos
-
-Refresh analytics
-
-Analytics
-View every group's analytics
-
-Total views
-
-Total likes
-
-Total comments
-
-Platform statistics
-
-Charts
-Use all groups, not just one.
-
-Examples:
+Total Comments
 
 Views by Platform
+
+Views by Month
+
+Views by Group
 
 Top Videos
 
 Top Groups
 
-Monthly Growth
+Growth Rate
 
-Daily Uploads
-
-Master Prompt
-Give this to Lovable:
-
-Review the entire admin implementation.
-
-The current admin dashboard behaves like a normal user dashboard and only displays the logged-in user's data.
-
-Do not redesign the application.
-
-Reuse all existing components.
-
-Modify the existing Admin Dashboard so it becomes a true global administration panel.
-
-Requirements
-
-1. Detect users whose role is 'admin'.
-
-2. Admin must bypass normal user filtering.
-
-3. Replace all "current user's groups" queries with global queries.
-
-4. Admin Dashboard must display:
-
-• Total Users
-• Total Groups
-• Total Video Links
-• Total Views
-• Total Likes
-• Total Comments
-• Pending Invitations
-• Active Collaborations
-
-5. Add charts using ALL records:
-
-• Views by Platform
-• Views by Group
-• Top 10 Videos
-• Top 10 Groups
-• Platform Distribution
-• Monthly Growth
-• Daily Uploads
-
-6. Add management pages:
+Phase 8 – CRUD
+Admin has full CRUD on:
 
 Users
 
-- View all
-- Edit
-- Delete
-- Change role
-- Search
-
 Groups
-
-- View all
-- Edit
-- Delete
-- View members
-- Search
 
 Video Links
 
-- View all
-- Edit
-- Delete
-- Refresh analytics
-- Filter by platform
-- Filter by group
-
 Analytics
 
-- View all analytics
-- Refresh all
-- Export CSV
-- Export Excel
+Invitations
 
-7. Implement global search.
+Members
 
-8. Implement server-side pagination.
+Phase 9 – Permissions
+Normal users:
 
-9. Keep all Row Level Security policies intact.
+✔ Create Groups
 
-10. Do not create duplicate components.
+✔ Edit Their Own Groups
 
-11. Extend the existing dashboard.
+✔ Edit Their Own Videos
 
-12. The admin should never see "Create Group" as the primary action. Instead, the dashboard should focus on monitoring and managing all platform data.
+❌ Delete Other Groups
 
-13. Use the analytics, video_links, group_members, groups, profiles, and video_metrics_history tables to build the dashboard.
+❌ View Other Groups
 
-14. If YouTube analytics are enabled, display real view counts; otherwise, clearly indicate that totals are based on stored analytics data.
+❌ Access Admin
 
-When complete, provide:
-- Files modified
-- SQL changes (if any)
-- Components added
-- Hooks updated
-- Testing checklist
-One More Recommendation
-Looking at your schema, your project is already large enough that I would separate the Admin Dashboard from the User Dashboard.
+Admins:
 
-Instead of one dashboard with conditional UI, use two distinct routes:
+✔ Full CRUD
 
-/dashboard → Regular users manage their own groups and videos.
+✔ View Everything
 
-/admin → Administrators manage the entire platform.
+✔ Delete Everything
 
-This keeps the code cleaner, makes permissions easier to enforce, and avoids confusing the admin with user-focused actions like "Add Group."
+✔ Manage Roles
+
+✔ Manage Members
+
+✔ View Analytics
+
+✔ Refresh Analytics
+
+Phase 10 – UI
+Reuse the existing design system.
+
+Do NOT redesign.
+
+Keep responsive layout.
+
+Keep dark/light themes.
+
+Use existing components.
+
+Phase 11 – Performance
+Use:
+
+React Query
+
+Pagination
+
+Lazy Loading
+
+Memoization
+
+Avoid duplicate API calls.
+
+Phase 12 – Final Verification
+Verify:
+
+Admin login redirects to /admin
+
+Normal user redirects to /dashboard
+
+/admin is inaccessible to non-admins
+
+Dashboard shows global statistics
+
+CRUD works correctly
+
+Charts display aggregated analytics
+
+RLS policies are respected
+
+Existing functionality is not broken
+
+Deliverables
+Provide:
+
+Files modified
+
+New components created
+
+SQL changes (if any)
+
+Route changes
+
+Hooks updated
+
+Testing checklist
+
+Remaining enhancements or future work
+
+This prompt instructs the AI to audit first, then extend your current project, keeping the existing architecture while implementing a proper role-based admin experience with a global dashboard.
 
 
-✨ Optimize Prompt
