@@ -106,3 +106,55 @@ export function useAllProfiles(enabled: boolean) {
     },
   });
 }
+
+export type GroupMember = Database["public"]["Tables"]["group_members"]["Row"];
+
+export function useGroupMembers(groupId: string | undefined) {
+  return useQuery({
+    queryKey: ["group-members", groupId],
+    enabled: !!groupId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("group_members")
+        .select("*")
+        .eq("group_id", groupId!)
+        .order("role", { ascending: false })
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as GroupMember[];
+    },
+  });
+}
+
+export function useMyMemberships(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["my-memberships", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("group_members")
+        .select("*, group:groups(*)")
+        .eq("user_id", userId!)
+        .eq("invitation_status", "accepted");
+      if (error) throw error;
+      return data as (GroupMember & { group: Group })[];
+    },
+  });
+}
+
+export function usePendingInvitations(email: string | undefined) {
+  return useQuery({
+    queryKey: ["pending-invitations", email],
+    enabled: !!email,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("group_members")
+        .select("*, group:groups(*)")
+        .eq("email", email!.toLowerCase())
+        .eq("invitation_status", "pending");
+      if (error) throw error;
+      return data as (GroupMember & { group: Group })[];
+    },
+  });
+}
+

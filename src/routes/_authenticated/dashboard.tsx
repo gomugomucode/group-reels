@@ -12,7 +12,13 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/hooks/use-auth";
-import { useMyGroup, useVideoLinks } from "@/hooks/use-data";
+import {
+  useMyGroup,
+  useVideoLinks,
+  useMyMemberships,
+  usePendingInvitations,
+  useGroupMembers,
+} from "@/hooks/use-data";
 import { StatCard } from "@/components/stat-card";
 import { PlatformBadge, StatusBadge } from "@/components/platform-badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +32,12 @@ import {
 } from "@/components/ui/select";
 import { PLATFORMS, PLATFORM_LABELS } from "@/lib/video-platforms";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Check } from "lucide-react";
+import { acceptInvitation, rejectInvitation } from "@/lib/group-collaboration.functions";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
@@ -34,12 +46,57 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 function DashboardPage() {
   const { user, profile, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const { data: group, isLoading } = useMyGroup(user?.id);
-  const { data: videos = [] } = useVideoLinks(group?.id);
+  const qc = useQueryClient();
+
+  const { data: ownedGroup, isLoading: ownedLoading } = useMyGroup(user?.id);
+  const { data: memberships = [], isLoading: membershipsLoading } = useMyMemberships(user?.id);
+  const { data: invites = [], isLoading: invitesLoading } = usePendingInvitations(profile?.email);
+
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+
+  const allGroups = useMemo(() => {
+    const list = [...memberships.map((m) => m.group)].filter(Boolean);
+    if (ownedGroup && !list.some((g) => g.id === ownedGroup.id)) {
+      list.unshift(ownedGroup);
+    }
+    return list;
+  }, [ownedGroup, memberships]);
+
+  const activeGroupId = selectedGroupId || ownedGroup?.id || memberships[0]?.group_id || null;
+  const activeGroup = allGroups.find((g) => g.id === activeGroupId) || null;
+
+  const activeMembership = memberships.find((m) => m.group_id === activeGroupId) || null;
+  const groupRole = activeGroup?.created_by === user?.id ? "owner" : activeMembership?.role || null;
+
+  const { data: videos = [], isLoading: videosLoading } = useVideoLinks(activeGroup?.id);
+  const { data: activeMembers = [] } = useGroupMembers(activeGroup?.id);
+
+  const acceptFn = useServerFn(acceptInvitation);
+  const rejectFn = useServerFn(rejectInvitation);
 
   const [search, setSearch] = useState("");
   const [platform, setPlatform] = useState("all");
   const [status, setStatus] = useState("all");
+
+  const handleAccept = async (inviteId: string) => {
+    try {
+      await acceptFn({ data: { memberId: inviteId } });
+      toast.success("Invitation accepted!");
+      qc.invalidateQueries();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to accept invitation");
+    }
+  };
+
+  const handleReject = async (inviteId: string) => {
+    try {
+      await rejectFn({ data: { memberId: inviteId } });
+      toast.success("Invitation rejected");
+      qc.invalidateQueries();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to reject invitation");
+    }
+  };
 
   const filtered = useMemo(() => {
     return videos.filter((v) => {
@@ -56,6 +113,14 @@ function DashboardPage() {
   const validCount = videos.filter((v) => v.status === "valid").length;
   const invalidCount = videos.filter((v) => v.status === "invalid").length;
 
+  const membersCount = useMemo(() => {
+    if (!activeGroup) return 0;
+    const acceptedCount = activeMembers.filter((m) => m.invitation_status === "accepted").length;
+    return acceptedCount > 0 ? acceptedCount : activeGroup.member_names.length;
+  }, [activeGroup, activeMembers]);
+
+  const isLoading = ownedLoading || membershipsLoading || invitesLoading || videosLoading;
+
   return (
     <AppLayout>
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
@@ -69,14 +134,75 @@ function DashboardPage() {
               : "Manage your team's social profiles and video links."}
           </p>
         </div>
-        {group && (
-          <Button asChild>
-            <Link to="/groups/$id" params={{ id: group.id }}>
-              Open group page <ArrowRight className="ml-1 size-4" />
-            </Link>
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {allGroups.length > 1 && (
+            <Select value={activeGroupId || ""} onValueChange={setSelectedGroupId}>
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="Switch team..." />
+              </SelectTrigger>
+              <SelectContent>
+                {allGroups.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.team_name} {g.created_by === user?.id ? "(Owner)" : "(Member)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {activeGroup && (
+            <Button asChild>
+              <Link to="/groups/$id" params={{ id: activeGroup.id }}>
+                Open group page <ArrowRight className="ml-1 size-4" />
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
+
+      {invites.length > 0 && (
+        <div className="mb-8 rounded-2xl border border-border bg-card p-5 animate-in fade-in-50 duration-200">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Users className="size-5 text-primary" /> Pending Team Invitations ({invites.length})
+          </h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            You have been invited to collaborate with these student teams.
+          </p>
+          <div className="mt-4 space-y-3">
+            {invites.map((invite) => (
+              <div
+                key={invite.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-secondary/30 p-4"
+              >
+                <div>
+                  <p className="font-semibold text-foreground">
+                    {invite.group?.team_name || "Unknown Team"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Role: <span className="capitalize font-medium text-foreground">{invite.role}</span>
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="bg-success text-success-foreground hover:bg-success/90"
+                    onClick={() => handleAccept(invite.id)}
+                  >
+                    <Check className="mr-1 size-4" /> Accept
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => handleReject(invite.id)}
+                  >
+                    <X className="mr-1 size-4" /> Decline
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -84,7 +210,7 @@ function DashboardPage() {
             <Skeleton key={i} className="h-28 rounded-xl" />
           ))}
         </div>
-      ) : !group ? (
+      ) : allGroups.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
           <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/15 text-primary">
             <Users className="size-7" />
@@ -119,7 +245,7 @@ function DashboardPage() {
             />
             <StatCard
               label="Team members"
-              value={group.member_names.length}
+              value={membersCount}
               icon={<Users className="size-4" />}
             />
           </div>
@@ -127,11 +253,11 @@ function DashboardPage() {
           <div className="mt-8 rounded-2xl border border-border bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
               <div>
-                <h2 className="text-lg font-semibold">{group.team_name}</h2>
+                <h2 className="text-lg font-semibold">{activeGroup?.team_name}</h2>
                 <p className="text-sm text-muted-foreground">Your video links</p>
               </div>
               <Button asChild size="sm" variant="outline">
-                <Link to="/groups/$id" params={{ id: group.id }}>
+                <Link to="/groups/$id" params={{ id: activeGroup?.id || "" }}>
                   <Plus className="mr-1 size-4" /> Add / manage
                 </Link>
               </Button>
