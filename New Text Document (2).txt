@@ -1110,3 +1110,255 @@ Tasks:
 This prompt focuses on finishing the admin functionality you've already started, rather than replacing it or creating parallel implementations.
 
 
+
+1:08:43 PM [vite] (client) warning: C:/Users/USER/Desktop/group-reels/src/lib/group-collaboration.functions.ts:113:33 createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.
+  Plugin: tanstack-start-core::server-fn:client
+  File: C:/Users/USER/Desktop/group-reels/src/lib/group-collaboration.functions.ts
+
+1:08:43 PM [vite] (client) warning: C:/Users/USER/Desktop/group-reels/src/lib/group-collaboration.functions.ts:145:33 createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.
+  Plugin: tanstack-start-core::server-fn:client
+  File: C:/Users/USER/Desktop/group-reels/src/lib/group-collaboration.functions.ts
+
+1:08:43 PM [vite] (client) warning: C:/Users/USER/Desktop/group-reels/src/lib/group-collaboration.functions.ts:190:33 createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.
+  Plugin: tanstack-start-core::server-fn:client
+  File: C:/Users/USER/Desktop/group-reels/src/lib/group-collaboration.functions.ts
+
+1:08:43 PM [vite] (client) warning: C:/Users/USER/Desktop/group-reels/src/lib/group-collaboration.functions.ts:230:29 createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.
+  Plugin: tanstack-start-core::server-fn:client
+  File: C:/Users/USER/Desktop/group-reels/src/lib/group-collaboration.functions.ts
+
+1:08:43 PM [vite] (client) warning: C:/Users/USER/Desktop/group-reels/src/lib/group-collaboration.functions.ts:262:34 createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.
+  Plugin: tanstack-start-core::server-fn:client
+  File: C:/Users/USER/Desktop/group-reels/src/lib/group-collaboration.functions.ts
+
+1:09:05 PM [vite] (client) warning: C:/Users/USER/Desktop/group-reels/src/lib/admin.functions.ts:15:34 createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.
+  Plugin: tanstack-start-core::server-fn:client
+  File: C:/Users/USER/Desktop/group-reels/src/lib/admin.functions.ts
+
+1:09:05 PM [vite] (client) warning: C:/Users/USER/Desktop/group-reels/src/lib/admin.functions.ts:54:34 createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.
+  Plugin: tanstack-start-core::server-fn:client
+  File: C:/Users/USER/Desktop/group-reels/src/lib/admin.functions.ts
+
+1:09:05 PM [vite] (client) warning: C:/Users/USER/Desktop/group-reels/src/lib/admin.functions.ts:76:34 createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.
+  Plugin: tanstack-start-core::server-fn:client
+  File: C:/Users/USER/Desktop/group-reels/src/lib/admin.functions.ts
+
+1:09:55 PM [vite] (client) warning: C:/Users/USER/Desktop/group-reels/src/lib/analytics.functions.ts:226:35 createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.
+  Plugin: tanstack-start-core::server-fn:client
+  File: C:/Users/USER/Desktop/group-reels/src/lib/analytics.functions.ts
+
+1:09:55 PM [vite] (client) warning: C:/Users/USER/Desktop/group-reels/src/lib/analytics.functions.ts:251:35 createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.
+  Plugin: tanstack-start-core::server-fn:client
+  File: C:/Users/USER/Desktop/group-reels/src/lib/analytics.functions.ts
+TanStack Start server functions are not protected by the CSRF middleware.
+
+Server functions are same-origin RPC endpoints and should be protected from cross-site requests.
+
+Add the CSRF middleware in src/start.ts:
+
+  const csrfMiddleware = createCsrfMiddleware({
+    filter: (ctx) => ctx.handlerType === 'serverFn',
+  })
+
+  export const startInstance = createStart(() => ({
+    requestMiddleware: [csrfMiddleware],
+  }))
+
+If you intentionally handle CSRF another way, disable this warning:
+
+  tanstackStart({
+    serverFns: {
+      disableCsrfMiddlewareWarning: true,
+    },
+  })
+
+1:09:55 PM [vite] (ssr) warning: C:/Users/USER/Desktop/group-reels/src/lib/analytics.functions.ts?tss-serverfn-split:226:35 createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.
+  Plugin: tanstack-start-core::server-fn:ssr
+  File: C:/Users/USER/Desktop/group-reels/src/lib/analytics.functions.ts?tss-serverfn-split
+
+1:09:55 PM [vite] (ssr) warning: C:/Users/USER/Desktop/group-reels/src/lib/analytics.functions.ts?tss-serverfn-split:251:35 createServerFn().inputValidator() is deprecated. Use createServerFn().validator() instead.
+  Plugin: tanstack-start-core::server-fn:ssr
+  File: C:/Users/USER/Desktop/group-reels/src/lib/analytics.functions.ts?tss-serverfn-split
+[Supabase] Missing Supabase environment variable(s): SUPABASE_SERVICE_ROLE_KEY. Connect Supabase in Lovable Cloud.
+[Supabase] Missing Supabase environment variable(s): SUPABASE_SERVICE_ROLE_KEY. Connect Supabase in Lovable Cloud.
+[Supabase] Missing Supabase environment variable(s): SUPABASE_SERVICE_ROLE_KEY. Connect Supabase in Lovable Cloud.
+[Supabase] Missing Supabase environment variable(s): SUPABASE_SERVICE_ROLE_KEY. Connect Supabase in Lovable Cloud.  ghow can i resolve tyhi error
+
+You actually have 3 different issues, and only one of them is important enough to fix before continuing.
+
+1. inputValidator() is deprecated ⚠️ (Warning)
+This is not an error.
+
+TanStack Start changed
+
+Old:
+
+createServerFn()
+  .inputValidator(...)
+New:
+
+createServerFn()
+  .validator(...)
+Example
+Old
+
+export const inviteMember = createServerFn()
+  .inputValidator(z.object({
+    email: z.string().email(),
+  }))
+New
+
+export const inviteMember = createServerFn()
+  .validator(z.object({
+    email: z.string().email(),
+  }))
+You have this warning in
+
+src/lib/group-collaboration.functions.ts
+
+src/lib/admin.functions.ts
+
+src/lib/analytics.functions.ts
+Replace every
+
+.inputValidator(
+with
+
+.validator(
+This is a future compatibility warning, not the cause of your login problems.
+
+2. Missing CSRF Middleware ⚠️ (Important)
+TanStack Start now recommends protecting every Server Function.
+
+Open
+
+src/start.ts
+Add
+
+import {
+  createStart,
+  createCsrfMiddleware,
+} from "@tanstack/react-start";
+Then
+
+const csrfMiddleware = createCsrfMiddleware({
+  filter: (ctx) => ctx.handlerType === "serverFn",
+});
+
+export const startInstance = createStart(() => ({
+  requestMiddleware: [
+    csrfMiddleware,
+  ],
+}));
+If you already have
+
+requestMiddleware:[
+...
+]
+just add
+
+csrfMiddleware
+inside it.
+
+3. Missing SUPABASE_SERVICE_ROLE_KEY ❌ (This is the real issue)
+This is the only serious error.
+
+Missing Supabase environment variable(s):
+
+SUPABASE_SERVICE_ROLE_KEY
+This means your server functions
+
+admin.functions.ts
+
+analytics.functions.ts
+
+group-collaboration.functions.ts
+cannot use the Supabase Admin API.
+
+Step 1
+Go to
+
+Supabase Dashboard
+
+Settings
+
+API
+You'll see
+
+Project URL
+
+anon key
+
+service_role key
+Copy
+
+service_role
+NOT the anon key.
+
+Step 2
+Open
+
+.env
+or
+
+.env.local
+Add
+
+VITE_SUPABASE_URL=https://YOURPROJECT.supabase.co
+
+VITE_SUPABASE_ANON_KEY=xxxxxxxxxxxx
+
+SUPABASE_SERVICE_ROLE_KEY=xxxxxxxxxxxxxxxxxxxxxxxx
+Notice
+
+SUPABASE_SERVICE_ROLE_KEY
+does NOT
+
+start with
+
+VITE_
+because it's server-only.
+
+Step 3
+Restart Vite
+
+CTRL+C
+
+npm run dev
+4. Check your server client
+Open
+
+src/integrations/supabase/client.server.ts
+You should have something similar to
+
+createClient(
+    process.env.VITE_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+or
+
+import.meta.env.VITE_SUPABASE_URL
+depending on your setup.
+
+5. If you're using Lovable
+Your log says
+
+Connect Supabase in Lovable Cloud
+This is only for Lovable Cloud deployments.
+
+If you're running locally with Vite (npm run dev), you don't need Lovable Cloud. Just ensure the required environment variables are present in your local .env.
+
+My recommendation
+Before building any more features, spend a few minutes cleaning up the project:
+
+✅ Replace all .inputValidator() calls with .validator().
+
+✅ Add the CSRF middleware to src/start.ts.
+
+✅ Add SUPABASE_SERVICE_ROLE_KEY to your environment variables (this is required if your server functions use an admin client).
+
+✅ Restart the dev server and confirm there are no environment variable errors.
+
+Once those are done, your foundation will be much more stable for the remaining admin and analytics work.
+
+
