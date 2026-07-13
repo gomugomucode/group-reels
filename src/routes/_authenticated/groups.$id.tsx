@@ -1,0 +1,379 @@
+import { useMemo, useState } from "react";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import {
+  ArrowLeft,
+  Plus,
+  Pencil,
+  Trash2,
+  ExternalLink,
+  Instagram,
+  Youtube,
+  Facebook,
+  Music2,
+  Linkedin,
+  Globe,
+  Search,
+  Crown,
+  Users,
+  Ban,
+} from "lucide-react";
+import { AppLayout } from "@/components/app-layout";
+import { useAuth } from "@/hooks/use-auth";
+import { useGroup, useVideoLinks, type VideoLink } from "@/hooks/use-data";
+import { supabase } from "@/integrations/supabase/client";
+import { GroupForm } from "@/components/group-form";
+import { VideoLinkDialog } from "@/components/video-link-dialog";
+import { PlatformBadge, StatusBadge } from "@/components/platform-badge";
+import { StatCard } from "@/components/stat-card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { PLATFORMS, PLATFORM_LABELS } from "@/lib/video-platforms";
+
+export const Route = createFileRoute("/_authenticated/groups/$id")({
+  component: GroupDetailPage,
+});
+
+const SOCIAL_ICONS = {
+  instagram: Instagram,
+  tiktok: Music2,
+  youtube: Youtube,
+  facebook: Facebook,
+  linkedin: Linkedin,
+  website: Globe,
+} as const;
+
+function GroupDetailPage() {
+  const { id } = Route.useParams();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { user, isAdmin } = useAuth();
+
+  const { data: group, isLoading } = useGroup(id);
+  const { data: videos = [] } = useVideoLinks(id);
+
+  const [editing, setEditing] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editLink, setEditLink] = useState<VideoLink | null>(null);
+  const [search, setSearch] = useState("");
+  const [platform, setPlatform] = useState("all");
+  const [status, setStatus] = useState("all");
+
+  const canManage = !!group && (group.created_by === user?.id || isAdmin);
+
+  const filtered = useMemo(() => {
+    return videos.filter((v) => {
+      const matchSearch =
+        !search ||
+        (v.title ?? "").toLowerCase().includes(search.toLowerCase()) ||
+        v.url.toLowerCase().includes(search.toLowerCase());
+      const matchPlatform = platform === "all" || v.platform === platform;
+      const matchStatus = status === "all" || v.status === status;
+      return matchSearch && matchPlatform && matchStatus;
+    });
+  }, [videos, search, platform, status]);
+
+  const deleteLink = useMutation({
+    mutationFn: async (linkId: string) => {
+      const { error } = await supabase.from("video_links").delete().eq("id", linkId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["video-links", id] });
+      qc.invalidateQueries({ queryKey: ["video-links-all"] });
+      toast.success("Video link deleted");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteGroup = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("groups").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-group"] });
+      qc.invalidateQueries({ queryKey: ["groups"] });
+      toast.success("Group deleted");
+      navigate({ to: "/dashboard" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <Skeleton className="h-64 rounded-2xl" />
+      </AppLayout>
+    );
+  }
+
+  if (!group) {
+    return (
+      <AppLayout>
+        <div className="rounded-2xl border border-border bg-card p-10 text-center">
+          <h1 className="text-xl font-semibold">Group not found</h1>
+          <Button className="mt-4" asChild>
+            <Link to="/dashboard">Back to dashboard</Link>
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const socialEntries = (
+    ["instagram", "tiktok", "youtube", "facebook", "linkedin", "website"] as const
+  )
+    .map((k) => ({ key: k, url: group[k] }))
+    .filter((s) => !!s.url);
+
+  return (
+    <AppLayout>
+      <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate({ to: "/dashboard" })}>
+        <ArrowLeft className="mr-1 size-4" /> Back
+      </Button>
+
+      {editing && canManage ? (
+        <>
+          <div className="mb-6 flex items-center justify-between">
+            <h1 className="text-2xl font-bold">Edit group</h1>
+            <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
+              Cancel edit
+            </Button>
+          </div>
+          <GroupForm userId={group.created_by} existing={group} />
+        </>
+      ) : (
+        <>
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl font-bold">{group.team_name}</h1>
+                  {group.disabled && (
+                    <Badge className="border-transparent bg-destructive/15 text-destructive">
+                      <Ban className="mr-1 size-3" /> Disabled
+                    </Badge>
+                  )}
+                </div>
+                {group.team_leader && (
+                  <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                    <Crown className="size-4 text-warning" /> Led by {group.team_leader}
+                  </p>
+                )}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Users className="size-4 text-muted-foreground" />
+                  {group.member_names.length ? (
+                    group.member_names.map((m) => (
+                      <Badge key={m} variant="secondary">
+                        {m}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-sm text-muted-foreground">No members listed</span>
+                  )}
+                </div>
+              </div>
+              {canManage && (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                    <Pencil className="mr-1 size-4" /> Edit
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-destructive">
+                        <Trash2 className="mr-1 size-4" /> Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this group?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This permanently removes the group and all its video links.
+                          This cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => deleteGroup.mutate()}>
+                          Delete group
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
+            </div>
+
+            {socialEntries.length > 0 && (
+              <div className="mt-6 flex flex-wrap gap-2">
+                {socialEntries.map(({ key, url }) => {
+                  const Icon = SOCIAL_ICONS[key];
+                  return (
+                    <a
+                      key={key}
+                      href={url!}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
+                    >
+                      <Icon className="size-4" /> {PLATFORM_LABELS[key as keyof typeof PLATFORM_LABELS] ?? key}
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <StatCard label="Total videos" value={videos.length} icon={<Youtube className="size-4" />} accent />
+            <StatCard
+              label="Valid"
+              value={videos.filter((v) => v.status === "valid").length}
+              icon={<ExternalLink className="size-4" />}
+            />
+            <StatCard
+              label="Invalid"
+              value={videos.filter((v) => v.status === "invalid").length}
+              icon={<Ban className="size-4" />}
+            />
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-border bg-card">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+              <h2 className="text-lg font-semibold">Video links</h2>
+              {canManage && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setEditLink(null);
+                    setDialogOpen(true);
+                  }}
+                >
+                  <Plus className="mr-1 size-4" /> Add video
+                </Button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-3 p-4">
+              <div className="relative min-w-48 flex-1">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  placeholder="Search..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Select value={platform} onValueChange={setPlatform}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Platform" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All platforms</SelectItem>
+                  {PLATFORMS.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {PLATFORM_LABELS[p]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="valid">Valid</SelectItem>
+                  <SelectItem value="invalid">Invalid</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="divide-y divide-border">
+              {filtered.length === 0 ? (
+                <p className="p-8 text-center text-sm text-muted-foreground">
+                  {videos.length === 0
+                    ? "No video links yet. Add your first one!"
+                    : "No links match your filters."}
+                </p>
+              ) : (
+                filtered.map((v) => (
+                  <div key={v.id} className="flex flex-wrap items-center gap-3 p-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{v.title || "Untitled video"}</p>
+                      <a
+                        href={v.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 truncate text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        {v.url}
+                        <ExternalLink className="size-3 shrink-0" />
+                      </a>
+                    </div>
+                    <PlatformBadge platform={v.platform} />
+                    <StatusBadge status={v.status} />
+                    {canManage && (
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditLink(v);
+                            setDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive"
+                          onClick={() => deleteLink.mutate(v.id)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {canManage && (
+            <VideoLinkDialog
+              open={dialogOpen}
+              onOpenChange={setDialogOpen}
+              groupId={group.id}
+              editing={editLink}
+            />
+          )}
+        </>
+      )}
+    </AppLayout>
+  );
+}
