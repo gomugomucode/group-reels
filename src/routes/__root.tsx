@@ -79,23 +79,38 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ReelHub — Team Video Content Manager" },
+      { title: "BKC Creator Hub | Butwal Kalika Campus Video Content Management Platform" },
       {
         name: "description",
         content:
-          "ReelHub lets student teams organize their social profiles and video links in one place, with validation, search, and an admin analytics dashboard.",
+          "BKC Creator Hub is the official collaborative video content management platform for Butwal Kalika Campus. Students can organize, manage, collaborate, and analyze social media content across YouTube, Facebook, Instagram, TikTok, and more.",
       },
-      { name: "author", content: "ReelHub" },
-      { property: "og:title", content: "ReelHub — Team Video Content Manager" },
+      {
+        name: "keywords",
+        content:
+          "Butwal Kalika Campus, BKC, BKC Creator Hub, BKC Content Management, College Content Platform Nepal, Student Video Management, Social Media Analytics, Video Collaboration Platform, Campus Media, Educational Content Management",
+      },
+      { name: "author", content: "Butwal Kalika Campus" },
+      { name: "robots", content: "index, follow" },
+      { property: "og:title", content: "BKC Creator Hub | Butwal Kalika Campus" },
       {
         property: "og:description",
         content:
-          "Organize team social profiles and video links with validation, search, and admin analytics.",
+          "Official collaborative content management platform for Butwal Kalika Campus students.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://btlkalikacampus.edu.np" },
+      { property: "og:site_name", content: "BKC Creator Hub" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "BKC Creator Hub | Butwal Kalika Campus" },
+      {
+        name: "twitter:description",
+        content:
+          "Official collaborative video content management platform for Butwal Kalika Campus students.",
+      },
     ],
     links: [
+      { rel: "canonical", href: "https://btlkalikacampus.edu.np" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       {
         rel: "preconnect",
@@ -111,6 +126,49 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "shortcut icon", href: "/favicon.ico" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify([
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "Butwal Kalika Campus",
+            alternateName: "BKC",
+            url: "https://btlkalikacampus.edu.np",
+            address: {
+              "@type": "PostalAddress",
+              streetAddress: "Butwal-10",
+              addressLocality: "Rupandehi",
+              addressCountry: "NP",
+            },
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "BKC Creator Hub",
+            url: "https://btlkalikacampus.edu.np",
+            description:
+              "Official collaborative video content management platform for Butwal Kalika Campus.",
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            name: "BKC Creator Hub",
+            operatingSystem: "Web",
+            applicationCategory: "EducationalApplication",
+            description:
+              "A collaborative platform for BKC students to manage, organize, and analyze social media video content across multiple platforms.",
+            url: "https://btlkalikacampus.edu.np",
+            author: {
+              "@type": "Organization",
+              name: "Butwal Kalika Campus",
+            },
+          },
+        ]),
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -121,7 +179,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" dir="ltr">
       <head>
         <HeadContent />
       </head>

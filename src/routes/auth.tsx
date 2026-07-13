@@ -47,7 +47,7 @@ function AuthPage() {
   const [loginPassword, setLoginPassword] = useState("");
 
   // ---- Register state ----
-  const [username, setUsername] = useState("");
+  // const [username, setUsername] = useState("");
   const [teamName, setTeamName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
@@ -72,13 +72,13 @@ function AuthPage() {
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     const schema = z.object({
-      username: z.string().trim().min(2, "Username must be at least 2 characters").max(40),
+      // username: z.string().trim().min(2, "Username must be at least 2 characters").max(40),
       teamName: z.string().trim().min(2, "Team name is required").max(80),
       email: z.string().trim().email("Enter a valid email"),
       password: z.string().min(8, "Password must be at least 8 characters"),
     });
     const parsed = schema.safeParse({
-      username,
+      // username,
       teamName,
       email: regEmail,
       password: regPassword,
@@ -96,7 +96,7 @@ function AuthPage() {
       options: {
         emailRedirectTo: window.location.origin,
         data: {
-          username: parsed.data.username,
+          // username: parsed.data.username,
           team_name: parsed.data.teamName,
           member_names: memberNames,
         },
@@ -178,7 +178,7 @@ function AuthPage() {
             <TabsContent value="register" className="mt-6">
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label htmlFor="reg-username">Username</Label>
                     <Input
                       id="reg-username"
@@ -186,11 +186,13 @@ function AuthPage() {
                       onChange={(e) => setUsername(e.target.value)}
                       required
                     />
-                  </div>
+                  </div> */}
                   <div className="space-y-2">
                     <Label htmlFor="reg-team">Team name</Label>
                     <Input
                       id="reg-team"
+                      type="text"
+                      autoComplete="team-name"
                       value={teamName}
                       onChange={(e) => setTeamName(e.target.value)}
                       required
@@ -263,12 +265,12 @@ function AuthPage() {
             </TabsContent>
           </Tabs>
 
-          <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+          {/* <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
             <span className="h-px flex-1 bg-border" />
             OR
             <span className="h-px flex-1 bg-border" />
-          </div>
-
+          </div> */}
+          {/* 
           <Button
             type="button"
             variant="outline"
@@ -278,7 +280,7 @@ function AuthPage() {
           >
             <GoogleIcon />
             <span className="ml-2">Continue with Google</span>
-          </Button>
+          </Button> */}
         </div>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
