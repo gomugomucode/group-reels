@@ -507,7 +507,10 @@ function GroupDetailPage() {
 
   const deleteLink = useMutation({
     mutationFn: async (linkId: string) => {
-      const { error } = await supabase.from("video_links").delete().eq("id", linkId);
+      const { error } = await supabase
+        .from("content")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", linkId);
       if (error) throw error;
     },
     onSuccess: () => {

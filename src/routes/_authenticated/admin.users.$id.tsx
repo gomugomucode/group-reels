@@ -63,6 +63,7 @@ import {
   type Platform,
 } from "@/lib/video-platforms";
 import { formatCount } from "@/lib/youtube";
+import { mapContentToVideoLink, type ContentWithMetrics } from "@/hooks/use-data";
 import {
   setUserRole,
   setUserAccountStatus,
@@ -126,13 +127,18 @@ function UserDetailPage() {
     queryKey: ["admin-user-videos", id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("video_links")
-        .select("*, group:groups(team_name)")
-        .eq("created_by", id)
+        .from("content")
+        .select("*, metrics:content_metrics(*), group:groups(team_name)")
+        .eq("user_id", id)
+        .eq("content_type", "video")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data ?? [];
+      return ((data ?? []) as Array<ContentWithMetrics & { group?: { team_name: string | null } }>).map((row) => ({
+        ...mapContentToVideoLink(row),
+        group: row.group,
+      }));
     },
   });
 
@@ -250,7 +256,10 @@ function UserDetailPage() {
 
   const deleteLink = useMutation({
     mutationFn: async (videoId: string) => {
-      const { error } = await supabase.from("video_links").delete().eq("id", videoId);
+      const { error } = await supabase
+        .from("content")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", videoId);
       if (error) throw error;
     },
     onSuccess: () => {

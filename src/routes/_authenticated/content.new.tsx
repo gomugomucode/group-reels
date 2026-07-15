@@ -31,6 +31,7 @@ function AddContentPage() {
 
   const mutation = useMutation({
     mutationFn: async () => {
+      if (!session?.user?.id) throw new Error("You must be signed in to save content.");
       const parsed = videoLinkSchema.safeParse({ url });
       if (!parsed.success) throw new Error(parsed.error.issues[0].message);
       
@@ -40,15 +41,25 @@ function AddContentPage() {
       if (!myGroup) throw new Error("No workspace found. Please create one first.");
 
       const payload = {
+        user_id: session.user.id,
         group_id: myGroup.id,
         title: null,
         url: parsed.data.url,
-        platform,
+        platform_id: platform,
+        content_type: "video",
         status,
       };
       
-      const { error } = await supabase.from("video_links").insert(payload);
+      const { data, error } = await supabase
+        .from("content")
+        .insert(payload)
+        .select("id")
+        .single();
       if (error) throw error;
+      const { error: metricsError } = await supabase
+        .from("content_metrics")
+        .insert({ content_id: data.id, sync_status: "pending" });
+      if (metricsError) throw metricsError;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["video-links"] });

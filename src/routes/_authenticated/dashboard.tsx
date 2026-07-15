@@ -367,7 +367,7 @@ function DashboardPage() {
                           className="text-destructive hover:bg-destructive/10"
                           onClick={() => {
                             if (confirm("Delete this content?")) {
-                              supabase.from("video_links").delete().eq("id", v.id).then(() => {
+                              supabase.from("content").update({ deleted_at: new Date().toISOString() }).eq("id", v.id).then(() => {
                                 qc.invalidateQueries();
                               });
                             }

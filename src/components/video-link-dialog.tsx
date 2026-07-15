@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ export function VideoLinkDialog({
   editing?: VideoLink | null;
 }) {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
 
@@ -51,26 +53,37 @@ export function VideoLinkDialog({
 
   const mutation = useMutation({
     mutationFn: async () => {
+      if (!user?.id) throw new Error("You must be signed in to save content.");
       const parsed = videoLinkSchema.safeParse({ title, url });
       if (!parsed.success) throw new Error(parsed.error.issues[0].message);
       const platform = detectPlatform(parsed.data.url);
       const status = deriveStatus(parsed.data.url);
       const payload = {
+        user_id: user.id,
         group_id: groupId,
         title: parsed.data.title || null,
         url: parsed.data.url,
-        platform,
+        platform_id: platform,
+        content_type: "video",
         status,
       };
       if (editing) {
         const { error } = await supabase
-          .from("video_links")
+          .from("content")
           .update(payload)
           .eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("video_links").insert(payload);
+        const { data, error } = await supabase
+          .from("content")
+          .insert(payload)
+          .select("id")
+          .single();
         if (error) throw error;
+        const { error: metricsError } = await supabase
+          .from("content_metrics")
+          .insert({ content_id: data.id, sync_status: "pending" });
+        if (metricsError) throw metricsError;
       }
     },
     onSuccess: () => {

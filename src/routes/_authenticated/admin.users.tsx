@@ -108,20 +108,24 @@ function AdminUsersPage() {
   const roleFn = useServerFn(setUserRole);
   const statusFn = useServerFn(setUserAccountStatus);
 
-  // Fetch all profiles, roles, and video metrics for high-fidelity client aggregation (Task 2 & 12)
+  // Fetch all profiles, roles, and content metrics for high-fidelity client aggregation (Task 2 & 12)
   const { data, isLoading } = useQuery({
     queryKey: ["admin-users-list"],
     queryFn: async () => {
-      const [{ data: profilesData, error: profilesError }, { data: rolesData, error: rolesError }, { data: videoData, error: videoError }] =
+      const [{ data: profilesData, error: profilesError }, { data: rolesData, error: rolesError }, { data: contentData, error: contentError }] =
         await Promise.all([
           supabase.from("profiles").select("*").order("created_at", { ascending: false }),
           supabase.from("user_roles").select("user_id, role"),
-          supabase.from("video_links").select("created_by, last_view_count"),
+          supabase
+            .from("content")
+            .select("user_id, metrics:content_metrics(views)")
+            .eq("content_type", "video")
+            .is("deleted_at", null),
         ]);
 
       if (profilesError) throw profilesError;
       if (rolesError) throw rolesError;
-      if (videoError) throw videoError;
+      if (contentError) throw contentError;
 
       const roleMap = new Map<string, string[]>();
       (rolesData ?? []).forEach((role) => {
@@ -134,10 +138,10 @@ function AdminUsersPage() {
       const contentCountMap = new Map<string, number>();
       const viewCountMap = new Map<string, number>();
 
-      (videoData ?? []).forEach((v) => {
-        if (!v.created_by) return;
-        contentCountMap.set(v.created_by, (contentCountMap.get(v.created_by) ?? 0) + 1);
-        viewCountMap.set(v.created_by, (viewCountMap.get(v.created_by) ?? 0) + (v.last_view_count ?? 0));
+      (contentData ?? []).forEach((content) => {
+        const metrics = Array.isArray(content.metrics) ? content.metrics[0] : content.metrics;
+        contentCountMap.set(content.user_id, (contentCountMap.get(content.user_id) ?? 0) + 1);
+        viewCountMap.set(content.user_id, (viewCountMap.get(content.user_id) ?? 0) + (metrics?.views ?? 0));
       });
 
       return (profilesData ?? []).map((profile) => ({

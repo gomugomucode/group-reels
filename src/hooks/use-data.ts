@@ -4,7 +4,41 @@ import type { Database } from "@/integrations/supabase/types";
 
 export type Group = Database["public"]["Tables"]["groups"]["Row"];
 export type VideoLink = Database["public"]["Tables"]["video_links"]["Row"];
+export type Content = Database["public"]["Tables"]["content"]["Row"];
+export type ContentMetrics = Database["public"]["Tables"]["content_metrics"]["Row"];
 export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+
+export type ContentWithMetrics = Content & {
+  metrics?: ContentMetrics | ContentMetrics[] | null;
+};
+
+export function mapContentToVideoLink(row: ContentWithMetrics): VideoLink {
+  const metrics = Array.isArray(row.metrics) ? row.metrics[0] : row.metrics;
+
+  return {
+    id: row.id,
+    group_id: row.group_id ?? "",
+    title: row.title,
+    url: row.url,
+    platform: row.platform_id as VideoLink["platform"],
+    status: row.status as VideoLink["status"],
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    created_by: row.user_id,
+    youtube_video_id: row.external_id,
+    thumbnail_url: row.thumbnail_url,
+    channel_name: null,
+    published_at: row.published_at,
+    duration_seconds: row.duration_seconds,
+    last_view_count: metrics?.views ?? 0,
+    last_like_count: metrics?.likes ?? 0,
+    last_comment_count: metrics?.comments ?? 0,
+    last_fetched_at: metrics?.last_fetched_at ?? null,
+    last_synced: metrics?.last_synced ?? null,
+    sync_status: (metrics?.sync_status ?? "idle") as VideoLink["sync_status"],
+    api_error: metrics?.api_error ?? null,
+  };
+}
 
 export function useMyGroup(userId: string | undefined) {
   return useQuery({
@@ -59,12 +93,14 @@ export function useVideoLinks(groupId: string | undefined) {
     enabled: !!groupId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("video_links")
-        .select("*")
+        .from("content")
+        .select("*, metrics:content_metrics(*)")
         .eq("group_id", groupId!)
+        .eq("content_type", "video")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as VideoLink[];
+      return ((data ?? []) as ContentWithMetrics[]).map(mapContentToVideoLink);
     },
   });
 }
@@ -74,11 +110,13 @@ export function useAllVideoLinks() {
     queryKey: ["video-links-all"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("video_links")
-        .select("*")
+        .from("content")
+        .select("*, metrics:content_metrics(*)")
+        .eq("content_type", "video")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as VideoLink[];
+      return ((data ?? []) as ContentWithMetrics[]).map(mapContentToVideoLink);
     },
   });
 }

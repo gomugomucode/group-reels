@@ -59,7 +59,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PLATFORMS, PLATFORM_LABELS, type Platform, type LinkStatus } from "@/lib/video-platforms";
-import type { VideoLink } from "@/hooks/use-data";
+import { mapContentToVideoLink, type ContentWithMetrics, type VideoLink } from "@/hooks/use-data";
 import { formatCount } from "@/lib/youtube";
 
 export const Route = createFileRoute("/_authenticated/admin/content")({
@@ -103,16 +103,21 @@ function AdminVideoLinksPage() {
     },
   });
 
-  // Query: Fetch all video links (Task 4 & 12)
+  // Query: Fetch all content rows with metrics (Task 4 & 12)
   const { data: videosData = [], isLoading } = useQuery({
     queryKey: ["admin-video-links-list"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("video_links")
-        .select("*, group:groups(team_name)")
+        .from("content")
+        .select("*, metrics:content_metrics(*), group:groups(team_name)")
+        .eq("content_type", "video")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as Array<VideoLink & { group?: { team_name: string | null } }>;
+      return ((data ?? []) as Array<ContentWithMetrics & { group?: { team_name: string | null } }>).map((row) => ({
+        ...mapContentToVideoLink(row),
+        group: row.group,
+      }));
     },
   });
 
@@ -200,11 +205,11 @@ function AdminVideoLinksPage() {
   const updateLink = useMutation({
     mutationFn: async ({ id, values }: { id: string; values: typeof editForm }) => {
       const { error } = await supabase
-        .from("video_links")
+        .from("content")
         .update({
           title: values.title || null,
           url: values.url,
-          platform: values.platform,
+          platform_id: values.platform,
           status: values.status,
           updated_at: new Date().toISOString(),
         })
@@ -222,7 +227,10 @@ function AdminVideoLinksPage() {
 
   const deleteLink = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("video_links").delete().eq("id", id);
+      const { error } = await supabase
+        .from("content")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -249,9 +257,11 @@ function AdminVideoLinksPage() {
   // Bulk Mutations (Task 7)
   const bulkDelete = useMutation({
     mutationFn: async (ids: string[]) => {
-      for (const id of ids) {
-        await supabase.from("video_links").delete().eq("id", id);
-      }
+      const { error } = await supabase
+        .from("content")
+        .update({ deleted_at: new Date().toISOString() })
+        .in("id", ids);
+      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-video-links-list"] });
