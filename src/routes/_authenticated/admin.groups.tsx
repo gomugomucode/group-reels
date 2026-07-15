@@ -315,7 +315,7 @@ function AdminGroupsPage() {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Delete {g.team_name}?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    This permanently removes the group and all its video links.
+                                    This permanently removes the group and all its content.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>

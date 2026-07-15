@@ -25,8 +25,8 @@ const FEATURES = [
   },
   {
     icon: Link2,
-    title: "Video Link Management",
-    desc: "Add YouTube, TikTok, Instagram, Facebook & more with automatic platform detection.",
+    title: "Content Management",
+    desc: "Add YouTube, TikTok, Instagram, Facebook & more with automatic platform detection and analytics sync.",
   },
   {
     icon: ShieldCheck,
@@ -175,7 +175,7 @@ function Landing() {
           </p>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { emoji: "🗂️", title: "Centralized Management", desc: "All your team's video links and social profiles in one organized hub." },
+              { emoji: "🗂️", title: "Centralized Management", desc: "All your team's content and social profiles in one organized hub." },
               { emoji: "🤝", title: "Easy Collaboration", desc: "Add members, assign roles, and work seamlessly within your group." },
               { emoji: "📈", title: "Performance Analytics", desc: "Track platform spread and content activity with real-time charts." },
               { emoji: "🔐", title: "Secure Access", desc: "Role-based authentication keeps your data safe and access controlled." },

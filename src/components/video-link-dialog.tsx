@@ -76,19 +76,19 @@ export function VideoLinkDialog({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["video-links", groupId] });
       qc.invalidateQueries({ queryKey: ["video-links-all"] });
-      toast.success(editing ? "Video link updated" : "Video link added");
+      toast.success("Content updated successfully");
       onOpenChange(false);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: () => toast.error("We couldn't save your content. Please try again."),
   });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit video link" : "Add video link"}</DialogTitle>
+          <DialogTitle>Edit Content</DialogTitle>
           <DialogDescription>
-            Paste a link from YouTube, TikTok, Instagram, Facebook, Vimeo, or elsewhere.
+            Update the title and URL for this content.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -108,7 +108,7 @@ export function VideoLinkDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="v-url">Video URL</Label>
+            <Label htmlFor="v-url">Content URL</Label>
             <Input
               id="v-url"
               value={url}
@@ -123,12 +123,6 @@ export function VideoLinkDialog({
                 <StatusBadge status={preview.status} />
               </div>
             )}
-            <p className="text-xs text-muted-foreground">
-              Links matching a known platform ({Object.values(PLATFORM_LABELS)
-                .slice(0, 5)
-                .join(", ")}
-              ) are marked valid automatically.
-            </p>
           </div>
           <DialogFooter>
             <Button
@@ -140,7 +134,7 @@ export function VideoLinkDialog({
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-              {editing ? "Save changes" : "Add link"}
+              Save changes
             </Button>
           </DialogFooter>
         </form>

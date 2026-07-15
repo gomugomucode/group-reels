@@ -2,8 +2,6 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Video,
-  CheckCircle2,
-  AlertTriangle,
   Users,
   Plus,
   ArrowRight,
@@ -11,11 +9,11 @@ import {
   ExternalLink,
   Check,
   X,
-  Heart,
-  RefreshCw,
-  Activity,
   Pencil,
   Trash2,
+  Eye,
+  ThumbsUp,
+  TrendingUp,
 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/hooks/use-auth";
@@ -27,7 +25,7 @@ import {
   useGroupMembers,
 } from "@/hooks/use-data";
 import { StatCard } from "@/components/stat-card";
-import { PlatformBadge, StatusBadge } from "@/components/platform-badge";
+import { VideoLinkDialog } from "@/components/video-link-dialog";
 import { Button } from "@/components/ui/button";
 import { VideoThumbnail } from "@/components/video-thumbnail";
 import { VideoStatsBadge } from "@/components/video-stats-badge";
@@ -49,15 +47,16 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { acceptInvitation, rejectInvitation } from "@/lib/group-collaboration.functions";
 
-
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
 });
 
 function DashboardPage() {
-  const { user, profile, isAdmin } = useAuth();
-  const navigate = useNavigate();
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { user, profile, isAdmin } = useAuth();
+  const [editingLink, setEditingLink] = useState<any>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: ownedGroup, isLoading: ownedLoading } = useMyGroup(user?.id);
   const { data: memberships = [], isLoading: membershipsLoading } = useMyMemberships(user?.id);
@@ -121,9 +120,6 @@ function DashboardPage() {
     });
   }, [videos, search, platform, status]);
 
-  const validCount = videos.filter((v) => v.status === "valid").length;
-  const invalidCount = videos.filter((v) => v.status === "invalid").length;
-
   const membersCount = useMemo(() => {
     if (!activeGroup) return 0;
     const acceptedCount = activeMembers.filter((m) => m.invitation_status === "accepted").length;
@@ -134,6 +130,7 @@ function DashboardPage() {
 
   return (
     <AppLayout>
+      {/* Header */}
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">
@@ -142,7 +139,7 @@ function DashboardPage() {
           <p className="mt-1 text-muted-foreground">
             {isAdmin
               ? "You have admin access. Manage everything from the Admin dashboard."
-              : "Manage your team's social profiles and video links."}
+              : "Manage your team's social profiles and content."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -179,13 +176,14 @@ function DashboardPage() {
         </div>
       </div>
 
+      {/* Pending invitations */}
       {invites.length > 0 && (
         <div className="mb-8 rounded-2xl border border-border bg-card p-5 animate-in fade-in-50 duration-200">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Users className="size-5 text-primary" /> Pending Team Invitations ({invites.length})
           </h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            You have been invited to collaborate with these student teams.
+            You have been invited to collaborate with these teams.
           </p>
           <div className="mt-4 space-y-3">
             {invites.map((invite) => (
@@ -224,6 +222,7 @@ function DashboardPage() {
         </div>
       )}
 
+      {/* Main content */}
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -237,8 +236,7 @@ function DashboardPage() {
           </div>
           <h2 className="mt-4 text-xl font-semibold">Create your team group</h2>
           <p className="mx-auto mt-2 max-w-md text-muted-foreground">
-            Set up your group to add social media profiles and start collecting your
-            team's video links.
+            Set up your group to start tracking your team's social media content.
           </p>
           <Button className="mt-6" onClick={() => navigate({ to: "/groups/new" })}>
             <Plus className="mr-1 size-4" /> Create group
@@ -246,6 +244,7 @@ function DashboardPage() {
         </div>
       ) : (
         <>
+          {/* Stat cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Total Content"
@@ -254,35 +253,39 @@ function DashboardPage() {
               accent
             />
             <StatCard
-              label="Valid"
-              value={validCount}
-              icon={<CheckCircle2 className="size-4" />}
+              label="Total Views"
+              value={videos.reduce((acc, v) => acc + (v.last_view_count || 0), 0).toLocaleString()}
+              icon={<Eye className="size-4" />}
             />
             <StatCard
-              label="Needs attention"
-              value={invalidCount}
-              icon={<AlertTriangle className="size-4" />}
+              label="Total Likes"
+              value={videos.reduce((acc, v) => acc + (v.last_like_count || 0), 0).toLocaleString()}
+              icon={<ThumbsUp className="size-4" />}
             />
             <StatCard
-              label="Team members"
-              value={membersCount}
-              icon={<Users className="size-4" />}
+              label="Today's Growth"
+              value="+0%"
+              icon={<TrendingUp className="size-4 text-success" />}
             />
           </div>
 
+          {/* Content library */}
           <div className="mt-8 rounded-2xl border border-border bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
               <div>
-                <h2 className="text-lg font-semibold">{activeGroup?.team_name}</h2>
-                <p className="text-sm text-muted-foreground">Your video links</p>
+                <h2 className="text-lg font-semibold">{activeGroup?.team_name || "Workspace"}</h2>
+                <p className="text-sm text-muted-foreground">Recent Content</p>
               </div>
-              <Button asChild size="sm" variant="outline">
-                <Link to="/groups/$id" params={{ id: activeGroup?.id || "" }}>
-                  <Plus className="mr-1 size-4" /> Add / manage
-                </Link>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button asChild size="sm">
+                  <Link to="/content/new">
+                    <Plus className="mr-1 size-4" /> Add Content
+                  </Link>
+                </Button>
+              </div>
             </div>
 
+            {/* Filters */}
             <div className="flex flex-wrap gap-3 p-4">
               <div className="relative min-w-48 flex-1">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -319,12 +322,13 @@ function DashboardPage() {
               </Select>
             </div>
 
+            {/* Content rows */}
             <div className="divide-y divide-border">
               {filtered.length === 0 ? (
                 <div className="p-12 text-center">
                   <p className="text-muted-foreground">
-                    {videos.length === 0 
-                      ? "No content yet. Paste your first social media URL to begin." 
+                    {videos.length === 0
+                      ? "No content yet. Click 'Add Content' to get started."
                       : "No content matches your filters."}
                   </p>
                 </div>
@@ -354,13 +358,21 @@ function DashboardPage() {
                             canRefresh={true}
                           />
                         )}
-                        <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => {
-                          if (confirm("Delete this content?")) {
-                            supabase.from("video_links").delete().eq("id", v.id).then(() => {
-                              qc.invalidateQueries();
-                            });
-                          }
-                        }}>
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingLink(v); setDialogOpen(true); }}>
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            if (confirm("Delete this content?")) {
+                              supabase.from("video_links").delete().eq("id", v.id).then(() => {
+                                qc.invalidateQueries();
+                              });
+                            }
+                          }}
+                        >
                           <Trash2 className="size-4" />
                         </Button>
                       </div>
@@ -371,6 +383,16 @@ function DashboardPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Edit dialog */}
+      {dialogOpen && activeGroupId && (
+        <VideoLinkDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          groupId={activeGroupId}
+          editing={editingLink}
+        />
       )}
     </AppLayout>
   );

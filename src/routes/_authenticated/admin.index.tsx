@@ -289,13 +289,13 @@ function AdminDashboard() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-lg font-semibold">Global admin search</h2>
-            <p className="text-sm text-muted-foreground">Search users, groups, and video links from the admin console.</p>
+            <p className="text-sm text-muted-foreground">Search users, groups, and content from the admin console.</p>
           </div>
           <div className="w-full max-w-xl">
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search users, teams, or video links"
+              placeholder="Search users, teams, or content"
             />
           </div>
         </div>
@@ -388,7 +388,7 @@ function AdminDashboard() {
                   <h3 className="font-semibold text-lg flex items-center gap-2">
                     <Video className="size-4 text-primary" /> Monthly Uploads
                   </h3>
-                  <p className="text-xs text-muted-foreground">New video links added across the platform over time</p>
+                  <p className="text-xs text-muted-foreground">New content added across the platform over time</p>
                 </div>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
@@ -412,7 +412,7 @@ function AdminDashboard() {
                   <h3 className="font-semibold text-lg flex items-center gap-2">
                     <Video className="size-4 text-primary" /> Daily Uploads
                   </h3>
-                  <p className="text-xs text-muted-foreground">New video links added day by day across the platform</p>
+                  <p className="text-xs text-muted-foreground">New content added day by day across the platform</p>
                 </div>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
@@ -546,7 +546,7 @@ function AdminDashboard() {
               )}
             </ChartCard>
 
-            <ChartCard title="Most Active Uploaders" description="Teams with the highest video link counts">
+            <ChartCard title="Most Active Uploaders" description="Teams with the highest content counts">
               {activeUploadersData.length === 0 ? (
                 <div className="grid h-full place-items-center text-sm text-muted-foreground">
                   No upload statistics yet
@@ -565,7 +565,7 @@ function AdminDashboard() {
                         borderRadius: 12,
                         color: "var(--color-popover-foreground)",
                       }}
-                      formatter={(v: any) => [`${v} video links`]}
+                      formatter={(v: any) => [`${v} items`]}
                     />
                     <Bar dataKey="videos" fill="var(--color-chart-2)" radius={[0, 6, 6, 0]} />
                   </BarChart>

@@ -514,7 +514,7 @@ function GroupDetailPage() {
       qc.invalidateQueries({ queryKey: ["video-links", id] });
       qc.invalidateQueries({ queryKey: ["video-links-all"] });
       qc.invalidateQueries({ queryKey: ["group-analytics-summary", id] });
-      toast.success("Video link deleted");
+      toast.success("Content deleted");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -642,7 +642,7 @@ function GroupDetailPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete this group?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This permanently removes the group and all its video links.
+                          This permanently removes the group and all its content.
                           This cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
@@ -922,7 +922,7 @@ function GroupDetailPage() {
                     />
 
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-foreground truncate">{v.title || "Untitled video"}</p>
+                      <p className="font-semibold text-foreground truncate">{v.title || "Untitled content"}</p>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-muted-foreground">
                         {v.channel_name && <span>{v.channel_name}</span>}
                         {v.channel_name && <span>•</span>}

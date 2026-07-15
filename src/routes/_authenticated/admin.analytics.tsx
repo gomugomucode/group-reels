@@ -188,7 +188,7 @@ function AnalyticsSettingsPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="font-semibold text-muted-foreground text-sm">Global Analytics Overview</h3>
-                <p className="mt-1 text-sm text-muted-foreground">Platform-wide analytics across all groups and video links.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Platform-wide analytics across all groups and content.</p>
               </div>
               <Badge variant="secondary">{analyticsData?.length ?? 0} teams</Badge>
             </div>

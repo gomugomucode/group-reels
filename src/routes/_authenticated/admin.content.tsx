@@ -140,7 +140,7 @@ function AdminVideoLinksPage() {
       qc.invalidateQueries({ queryKey: ["admin-video-links"] });
       qc.invalidateQueries({ queryKey: ["video-links-all"] });
       setEditingLink(null);
-      toast.success("Video link updated");
+      toast.success("Content updated");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -153,7 +153,7 @@ function AdminVideoLinksPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-video-links"] });
       qc.invalidateQueries({ queryKey: ["video-links-all"] });
-      toast.success("Video link deleted");
+      toast.success("Content deleted");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -183,7 +183,7 @@ function AdminVideoLinksPage() {
         <div>
           <h1 className="text-3xl font-bold">Content</h1>
           <p className="mt-1 text-muted-foreground">
-            Review and manage every video link across all teams.
+            Review and manage all content across all teams.
           </p>
         </div>
         <div className="flex gap-2">
@@ -262,6 +262,9 @@ function AdminVideoLinksPage() {
                 <TableRow>
                   <TableHead>Title</TableHead>
                   <TableHead>Platform</TableHead>
+                  <TableHead>Views</TableHead>
+                  <TableHead>Likes</TableHead>
+                  <TableHead>Created</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Team</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -270,8 +273,8 @@ function AdminVideoLinksPage() {
               <TableBody>
                 {videos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                      No video links found.
+                    <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                      No content found.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -282,6 +285,9 @@ function AdminVideoLinksPage() {
                         <div className="text-sm text-muted-foreground">{video.url}</div>
                       </TableCell>
                       <TableCell>{PLATFORM_LABELS[video.platform]}</TableCell>
+                      <TableCell>{video.last_view_count?.toLocaleString() || "—"}</TableCell>
+                      <TableCell>{video.last_like_count?.toLocaleString() || "—"}</TableCell>
+                      <TableCell>{new Date(video.created_at).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Badge
                           className={video.status === "valid" ? "border-transparent bg-success/15 text-success" : video.status === "invalid" ? "border-transparent bg-destructive/15 text-destructive" : "border-transparent bg-muted/15 text-muted-foreground"}
@@ -309,9 +315,9 @@ function AdminVideoLinksPage() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete this video link?</AlertDialogTitle>
+                                <AlertDialogTitle>Delete this content?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This permanently removes the link from the platform.
+                                  This permanently removes the content from the platform.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -350,7 +356,7 @@ function AdminVideoLinksPage() {
       <Dialog open={Boolean(editingLink)} onOpenChange={(open) => !open && setEditingLink(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit video link</DialogTitle>
+            <DialogTitle>Edit Content</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">

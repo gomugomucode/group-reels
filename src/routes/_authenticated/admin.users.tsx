@@ -317,7 +317,7 @@ function AdminUsersPage() {
                                 <AlertDialogTitle>Delete {p.username}?</AlertDialogTitle>
                                 <AlertDialogDescription>
                                   This permanently deletes the account and all associated
-                                  groups and video links. This cannot be undone.
+                                  groups and content. This cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
