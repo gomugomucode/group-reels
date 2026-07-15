@@ -9,8 +9,11 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    defaultPreloadStaleTime: 1000 * 60 * 5, // 5 minutes
+    defaultPreloadDelay: 0, // start preloading immediately
   });
+  console.log("Supabase URL:", import.meta.env.VITE_SUPABASE_URL);
+console.log("Publishable Key:", import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
   return router;
 };
