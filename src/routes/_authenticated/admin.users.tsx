@@ -565,7 +565,7 @@ function AdminUsersPage() {
 
         {/* Sort Select */}
         <div>
-          <Select value={sortField} onValueChange={(v) => setSortField(v)}>
+          <Select value={sortField} onValueChange={(v) => { setPage(1); setSortField(v); }}>
             <SelectTrigger className="h-9 text-xs">
               <div className="flex items-center gap-1.5">
                 <ArrowUpDown className="size-3 text-muted-foreground" />
@@ -787,8 +787,9 @@ function AdminUsersPage() {
             {/* Pagination Controls */}
             <div className="flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground">
               <span>
-                Showing {(page - 1) * pageSize + 1} -{" "}
-                {Math.min(page * pageSize, filteredProfiles.length)} of {filteredProfiles.length} users
+              {filteredProfiles.length === 0
+                ? "No users match the current filters"
+                : `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, filteredProfiles.length)} of ${filteredProfiles.length} users`}
               </span>
               <div className="flex gap-2">
                 <Button

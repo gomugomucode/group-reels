@@ -33,9 +33,11 @@ import {
   UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 import { AppLayout } from "@/components/app-layout";
 import { StatCard } from "@/components/stat-card";
 import { useAdminDashboardData } from "@/hooks/use-data";
+import { triggerFullSync } from "@/lib/analytics.functions";
 import {
   PLATFORMS,
   PLATFORM_LABELS,
@@ -91,7 +93,9 @@ interface ActivityEvent {
 
 function AdminDashboard() {
   const { data: adminData, isLoading: adminLoading, refetch } = useAdminDashboardData();
+  const syncFn = useServerFn(triggerFullSync);
   const [search, setSearch] = useState("");
+  const [syncing, setSyncing] = useState(false);
 
   // Admin settings from local storage
   const [settings, setSettings] = useState<AdminSettings>(() => {
@@ -380,7 +384,7 @@ function AdminDashboard() {
           type: "User",
           label: profile.username,
           description: profile.email,
-          href: `/admin/users`, // User management path
+          href: `/admin/users/${profile.id}`,
         })),
       ...groups
         .filter((group) => {
@@ -438,14 +442,23 @@ function AdminDashboard() {
             size="sm"
             variant="outline"
             className="h-9 gap-1.5"
-            onClick={() => {
-              refetch();
-              toast.success("Synchronizing dashboard stats...");
+            onClick={async () => {
+              if (syncing) return;
+              setSyncing(true);
+              try {
+                await syncFn();
+                await refetch();
+                toast.success("Analytics synced successfully!");
+              } catch (err: any) {
+                toast.error(err.message || "Sync failed");
+              } finally {
+                setSyncing(false);
+              }
             }}
-            disabled={loading}
+            disabled={loading || syncing}
           >
-            <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-            <span>Sync Stats</span>
+            <RefreshCw className={`size-3.5 ${syncing ? "animate-spin" : ""}`} />
+            <span>{syncing ? "Syncing…" : "Sync Stats"}</span>
           </Button>
           <Button asChild size="sm" className="h-9 gap-1.5">
             <Link to="/admin/analytics">
