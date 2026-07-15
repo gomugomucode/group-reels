@@ -853,7 +853,7 @@ function GroupDetailPage() {
           {/* ── Video Links Panel with Thumbnails & Stats ── */}
           <div className="mt-6 rounded-2xl border border-border bg-card">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
-              <h2 className="text-lg font-semibold">Video links</h2>
+              <h2 className="text-lg font-semibold">Content</h2>
               {/* Anyone who can see this group (owner, member, admin) can add links */}
               {(canManage || !!myMembership) && (
                 <Button
@@ -863,7 +863,7 @@ function GroupDetailPage() {
                     setDialogOpen(true);
                   }}
                 >
-                  <Plus className="mr-1 size-4" /> Add video
+                  <Plus className="mr-1 size-4" /> Add content
                 </Button>
               )}
             </div>
@@ -908,8 +908,8 @@ function GroupDetailPage() {
               {filtered.length === 0 ? (
                 <p className="p-8 text-center text-sm text-muted-foreground">
                   {videos.length === 0
-                    ? "No video links yet. Add your first one!"
-                    : "No links match your filters."}
+                    ? "No content yet. Paste your first social media URL to begin."
+                    : "No content matches your filters."}
                 </p>
               ) : (
                 filtered.map((v) => (

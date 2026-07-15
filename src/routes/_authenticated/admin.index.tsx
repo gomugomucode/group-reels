@@ -340,7 +340,7 @@ function AdminDashboard() {
             <StatCard label="Total Users" value={profiles.length} icon={<Users className="size-4" />} accent />
             <StatCard label="Total Groups" value={groups.length} icon={<FolderKanban className="size-4" />} />
             <StatCard label="Total Members" value={totalMembers} icon={<Users className="size-4" />} />
-            <StatCard label="Total Video Links" value={videos.length} icon={<Video className="size-4" />} />
+            <StatCard label="Total Content" value={videos.length} icon={<Video className="size-4" />} />
             <StatCard label="Total Views" value={formatCount(totals.views)} icon={<Eye className="size-4" />} />
           </div>
 
@@ -646,13 +646,13 @@ function AdminDashboard() {
               <ArrowRight className="size-5 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
             </Link>
             <Link
-              to="/admin/video-links"
+              to="/admin/content"
               className="group flex items-center justify-between rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary"
             >
               <div>
-                <p className="font-semibold">Video links</p>
+                <p className="font-semibold">Content</p>
                 <p className="text-sm text-muted-foreground">
-                  Edit, refresh, filter, and remove video links.
+                  Edit, refresh, filter, and remove content.
                 </p>
               </div>
               <ArrowRight className="size-5 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />

@@ -18,9 +18,10 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedGroupsNewRouteImport } from './routes/_authenticated/groups.new'
 import { Route as AuthenticatedGroupsIdRouteImport } from './routes/_authenticated/groups.$id'
-import { Route as AuthenticatedAdminVideoLinksRouteImport } from './routes/_authenticated/admin.video-links'
+import { Route as AuthenticatedContentNewRouteImport } from './routes/_authenticated/content.new'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminGroupsRouteImport } from './routes/_authenticated/admin.groups'
+import { Route as AuthenticatedAdminContentRouteImport } from './routes/_authenticated/admin.content'
 import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin.analytics'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -67,12 +68,11 @@ const AuthenticatedGroupsIdRoute = AuthenticatedGroupsIdRouteImport.update({
   path: '/groups/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAdminVideoLinksRoute =
-  AuthenticatedAdminVideoLinksRouteImport.update({
-    id: '/video-links',
-    path: '/video-links',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
+const AuthenticatedContentNewRoute = AuthenticatedContentNewRouteImport.update({
+  id: '/content/new',
+  path: '/content/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -82,6 +82,12 @@ const AuthenticatedAdminGroupsRoute =
   AuthenticatedAdminGroupsRouteImport.update({
     id: '/groups',
     path: '/groups',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminContentRoute =
+  AuthenticatedAdminContentRouteImport.update({
+    id: '/content',
+    path: '/content',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminAnalyticsRoute =
@@ -98,9 +104,10 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
+  '/admin/content': typeof AuthenticatedAdminContentRoute
   '/admin/groups': typeof AuthenticatedAdminGroupsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
-  '/admin/video-links': typeof AuthenticatedAdminVideoLinksRoute
+  '/content/new': typeof AuthenticatedContentNewRoute
   '/groups/$id': typeof AuthenticatedGroupsIdRoute
   '/groups/new': typeof AuthenticatedGroupsNewRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -111,9 +118,10 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
+  '/admin/content': typeof AuthenticatedAdminContentRoute
   '/admin/groups': typeof AuthenticatedAdminGroupsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
-  '/admin/video-links': typeof AuthenticatedAdminVideoLinksRoute
+  '/content/new': typeof AuthenticatedContentNewRoute
   '/groups/$id': typeof AuthenticatedGroupsIdRoute
   '/groups/new': typeof AuthenticatedGroupsNewRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -127,9 +135,10 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
+  '/_authenticated/admin/content': typeof AuthenticatedAdminContentRoute
   '/_authenticated/admin/groups': typeof AuthenticatedAdminGroupsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
-  '/_authenticated/admin/video-links': typeof AuthenticatedAdminVideoLinksRoute
+  '/_authenticated/content/new': typeof AuthenticatedContentNewRoute
   '/_authenticated/groups/$id': typeof AuthenticatedGroupsIdRoute
   '/_authenticated/groups/new': typeof AuthenticatedGroupsNewRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -143,9 +152,10 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/admin/analytics'
+    | '/admin/content'
     | '/admin/groups'
     | '/admin/users'
-    | '/admin/video-links'
+    | '/content/new'
     | '/groups/$id'
     | '/groups/new'
     | '/admin/'
@@ -156,9 +166,10 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/dashboard'
     | '/admin/analytics'
+    | '/admin/content'
     | '/admin/groups'
     | '/admin/users'
-    | '/admin/video-links'
+    | '/content/new'
     | '/groups/$id'
     | '/groups/new'
     | '/admin'
@@ -171,9 +182,10 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/_authenticated/admin/analytics'
+    | '/_authenticated/admin/content'
     | '/_authenticated/admin/groups'
     | '/_authenticated/admin/users'
-    | '/_authenticated/admin/video-links'
+    | '/_authenticated/content/new'
     | '/_authenticated/groups/$id'
     | '/_authenticated/groups/new'
     | '/_authenticated/admin/'
@@ -251,12 +263,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGroupsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin/video-links': {
-      id: '/_authenticated/admin/video-links'
-      path: '/video-links'
-      fullPath: '/admin/video-links'
-      preLoaderRoute: typeof AuthenticatedAdminVideoLinksRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
+    '/_authenticated/content/new': {
+      id: '/_authenticated/content/new'
+      path: '/content/new'
+      fullPath: '/content/new'
+      preLoaderRoute: typeof AuthenticatedContentNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/users': {
       id: '/_authenticated/admin/users'
@@ -272,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminGroupsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/content': {
+      id: '/_authenticated/admin/content'
+      path: '/content'
+      fullPath: '/admin/content'
+      preLoaderRoute: typeof AuthenticatedAdminContentRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/analytics': {
       id: '/_authenticated/admin/analytics'
       path: '/analytics'
@@ -284,17 +303,17 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAnalyticsRoute: typeof AuthenticatedAdminAnalyticsRoute
+  AuthenticatedAdminContentRoute: typeof AuthenticatedAdminContentRoute
   AuthenticatedAdminGroupsRoute: typeof AuthenticatedAdminGroupsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
-  AuthenticatedAdminVideoLinksRoute: typeof AuthenticatedAdminVideoLinksRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAnalyticsRoute: AuthenticatedAdminAnalyticsRoute,
+  AuthenticatedAdminContentRoute: AuthenticatedAdminContentRoute,
   AuthenticatedAdminGroupsRoute: AuthenticatedAdminGroupsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
-  AuthenticatedAdminVideoLinksRoute: AuthenticatedAdminVideoLinksRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
 
@@ -304,6 +323,7 @@ const AuthenticatedAdminRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedContentNewRoute: typeof AuthenticatedContentNewRoute
   AuthenticatedGroupsIdRoute: typeof AuthenticatedGroupsIdRoute
   AuthenticatedGroupsNewRoute: typeof AuthenticatedGroupsNewRoute
 }
@@ -311,6 +331,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedContentNewRoute: AuthenticatedContentNewRoute,
   AuthenticatedGroupsIdRoute: AuthenticatedGroupsIdRoute,
   AuthenticatedGroupsNewRoute: AuthenticatedGroupsNewRoute,
 }

@@ -11,6 +11,11 @@ import {
   ExternalLink,
   Check,
   X,
+  Heart,
+  RefreshCw,
+  Activity,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/hooks/use-auth";
@@ -24,6 +29,10 @@ import {
 import { StatCard } from "@/components/stat-card";
 import { PlatformBadge, StatusBadge } from "@/components/platform-badge";
 import { Button } from "@/components/ui/button";
+import { VideoThumbnail } from "@/components/video-thumbnail";
+import { VideoStatsBadge } from "@/components/video-stats-badge";
+import { SyncStatusBadge } from "@/components/sync-status-badge";
+import { RefreshButton } from "@/components/refresh-button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -37,6 +46,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { acceptInvitation, rejectInvitation } from "@/lib/group-collaboration.functions";
 
 
@@ -238,13 +248,13 @@ function DashboardPage() {
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Total videos"
+              label="Total Content"
               value={videos.length}
               icon={<Video className="size-4" />}
               accent
             />
             <StatCard
-              label="Valid links"
+              label="Valid"
               value={validCount}
               icon={<CheckCircle2 className="size-4" />}
             />
@@ -311,31 +321,50 @@ function DashboardPage() {
 
             <div className="divide-y divide-border">
               {filtered.length === 0 ? (
-                <p className="p-8 text-center text-sm text-muted-foreground">
-                  No video links match your filters yet.
-                </p>
+                <div className="p-12 text-center">
+                  <p className="text-muted-foreground">
+                    {videos.length === 0 
+                      ? "No content yet. Paste your first social media URL to begin." 
+                      : "No content matches your filters."}
+                  </p>
+                </div>
               ) : (
                 filtered.map((v) => (
-                  <div
-                    key={v.id}
-                    className="flex flex-wrap items-center gap-3 p-4"
-                  >
+                  <div key={v.id} className="flex flex-wrap items-center gap-4 p-4 hover:bg-secondary/20 transition-colors">
+                    <VideoThumbnail thumbnailUrl={v.thumbnail_url} platform={v.platform} title={v.title} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">
-                        {v.title || "Untitled video"}
-                      </p>
-                      <a
-                        href={v.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 truncate text-sm text-muted-foreground hover:text-foreground"
-                      >
-                        {v.url}
-                        <ExternalLink className="size-3 shrink-0" />
-                      </a>
+                      <p className="font-semibold text-foreground truncate">{v.title || "Untitled content"}</p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-muted-foreground">
+                        {v.channel_name && <span>{v.channel_name} • </span>}
+                        <a href={v.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground truncate">
+                          {v.url} <ExternalLink className="size-3 shrink-0" />
+                        </a>
+                      </div>
+                      <VideoStatsBadge views={v.last_view_count} likes={v.last_like_count} comments={v.last_comment_count} className="mt-2" />
                     </div>
-                    <PlatformBadge platform={v.platform} />
-                    <StatusBadge status={v.status} />
+                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                      <SyncStatusBadge status={v.sync_status} apiError={v.api_error} lastSynced={v.last_synced} />
+                      <div className="flex items-center gap-1">
+                        {v.platform === "youtube" && activeGroupId && (
+                          <RefreshButton
+                            videoLinkId={v.id}
+                            groupId={activeGroupId}
+                            lastFetchedAt={v.last_fetched_at}
+                            syncStatus={v.sync_status}
+                            canRefresh={true}
+                          />
+                        )}
+                        <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => {
+                          if (confirm("Delete this content?")) {
+                            supabase.from("video_links").delete().eq("id", v.id).then(() => {
+                              qc.invalidateQueries();
+                            });
+                          }
+                        }}>
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ))
               )}

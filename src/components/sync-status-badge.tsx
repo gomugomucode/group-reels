@@ -68,11 +68,11 @@ export function SyncStatusBadge({
       return (
         <Badge
           variant="outline"
-          className={cn("gap-1 border-destructive/30 bg-destructive/15 text-destructive", className)}
-          title={apiError || "Analytics synchronization failed"}
+          className={cn("gap-1 border-border bg-card text-muted-foreground", className)}
+          title="Refresh later"
         >
           <AlertCircle className="size-3" />
-          <span>Error</span>
+          <span>Statistics unavailable</span>
         </Badge>
       );
     case "idle":

@@ -48,7 +48,7 @@ import {
 import { PLATFORMS, PLATFORM_LABELS, type Platform, type LinkStatus } from "@/lib/video-platforms";
 import type { VideoLink } from "@/hooks/use-data";
 
-export const Route = createFileRoute("/_authenticated/admin/video-links")({
+export const Route = createFileRoute("/_authenticated/admin/content")({
   component: AdminVideoLinksPage,
 });
 
@@ -181,7 +181,7 @@ function AdminVideoLinksPage() {
     <AppLayout>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Video links</h1>
+          <h1 className="text-3xl font-bold">Content</h1>
           <p className="mt-1 text-muted-foreground">
             Review and manage every video link across all teams.
           </p>
