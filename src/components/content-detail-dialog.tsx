@@ -127,7 +127,7 @@ export function ContentDetailDialog({
                  <p className="flex justify-between">
                     <span>Last Synced:</span>
                     <span className="font-medium text-foreground">
-                      {video.last_synced_at ? new Date(video.last_synced_at).toLocaleString() : "Never"}
+                      {video.last_synced ? new Date(video.last_synced).toLocaleString() : "Never"}
                     </span>
                   </p>
               </div>
