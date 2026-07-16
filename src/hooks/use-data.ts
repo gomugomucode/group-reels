@@ -40,6 +40,12 @@ export function mapContentToVideoLink(row: ContentWithMetrics): VideoLink {
     sync_status: (metrics?.sync_status ?? "idle") as VideoLink["sync_status"],
     api_error: metrics?.api_error ?? null,
     deleted_at: row.deleted_at,
+    notes: row.notes ?? null,
+    updated_by: metrics?.updated_by ?? null,
+    metrics_updated_at: metrics?.updated_at ?? null,
+    manual_override: metrics?.manual_override ?? null,
+    watch_time_seconds: metrics?.watch_time_seconds ?? null,
+    engagement_rate: metrics?.engagement_rate ?? null,
   };
 }
 

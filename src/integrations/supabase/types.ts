@@ -62,6 +62,7 @@ export type Database = {
           updated_at: string
           url: string
           user_id: string
+          notes: string | null
         }
         Insert: {
           content_type: string
@@ -81,6 +82,7 @@ export type Database = {
           updated_at?: string
           url: string
           user_id: string
+          notes?: string | null
         }
         Update: {
           content_type?: string
@@ -100,6 +102,7 @@ export type Database = {
           updated_at?: string
           url?: string
           user_id?: string
+          notes?: string | null
         }
         Relationships: [
           {
@@ -142,6 +145,9 @@ export type Database = {
           sync_status: string
           views: number
           watch_time_seconds: number
+          updated_by: string | null
+          updated_at: string
+          manual_override: boolean
         }
         Insert: {
           api_error?: string | null
@@ -159,6 +165,9 @@ export type Database = {
           sync_status?: string
           views?: number
           watch_time_seconds?: number
+          updated_by?: string | null
+          updated_at?: string
+          manual_override?: boolean
         }
         Update: {
           api_error?: string | null
@@ -176,6 +185,9 @@ export type Database = {
           sync_status?: string
           views?: number
           watch_time_seconds?: number
+          updated_by?: string | null
+          updated_at?: string
+          manual_override?: boolean
         }
         Relationships: [
           {
@@ -362,39 +374,6 @@ export type Database = {
         }
         Relationships: []
       }
-      profiles: {
-        Row: {
-          created_at: string
-          disabled: boolean
-          email: string
-          id: string
-          member_names: string[]
-          team_name: string | null
-          updated_at: string
-          username: string
-        }
-        Insert: {
-          created_at?: string
-          disabled?: boolean
-          email: string
-          id: string
-          member_names?: string[]
-          team_name?: string | null
-          updated_at?: string
-          username: string
-        }
-        Update: {
-          created_at?: string
-          disabled?: boolean
-          email?: string
-          id?: string
-          member_names?: string[]
-          team_name?: string | null
-          updated_at?: string
-          username?: string
-        }
-        Relationships: []
-      }
       social_accounts: {
         Row: {
           avatar_url: string | null
@@ -489,6 +468,12 @@ export type Database = {
           updated_at: string
           url: string
           youtube_video_id: string | null
+          notes: string | null
+          updated_by: string | null
+          metrics_updated_at: string | null
+          manual_override: boolean | null
+          watch_time_seconds: number | null
+          engagement_rate: number | null
         }
         Insert: {
           api_error?: string | null
@@ -512,6 +497,12 @@ export type Database = {
           updated_at?: string
           url: string
           youtube_video_id?: string | null
+          notes?: string | null
+          updated_by?: string | null
+          metrics_updated_at?: string | null
+          manual_override?: boolean | null
+          watch_time_seconds?: number | null
+          engagement_rate?: number | null
         }
         Update: {
           api_error?: string | null
@@ -535,6 +526,12 @@ export type Database = {
           updated_at?: string
           url?: string
           youtube_video_id?: string | null
+          notes?: string | null
+          updated_by?: string | null
+          metrics_updated_at?: string | null
+          manual_override?: boolean | null
+          watch_time_seconds?: number | null
+          engagement_rate?: number | null
         }
         Relationships: [
           {
@@ -581,36 +578,39 @@ export type Database = {
           },
         ]
       }
-      analytics_sync_log: {
+      profiles: {
         Row: {
           id: string
-          triggered_by: string | null
-          started_at: string
-          completed_at: string | null
-          videos_processed: number
-          videos_succeeded: number
-          videos_failed: number
-          error_summary: string | null
+          username: string
+          email: string
+          team_name: string | null
+          member_names: string[]
+          created_at: string
+          updated_at: string
+          suspended_at: string | null
+          suspension_reason: string | null
         }
         Insert: {
-          id?: string
-          triggered_by?: string | null
-          started_at?: string
-          completed_at?: string | null
-          videos_processed?: number
-          videos_succeeded?: number
-          videos_failed?: number
-          error_summary?: string | null
+          id: string
+          username: string
+          email: string
+          team_name?: string | null
+          member_names?: string[]
+          created_at?: string
+          updated_at?: string
+          suspended_at?: string | null
+          suspension_reason?: string | null
         }
         Update: {
           id?: string
-          triggered_by?: string | null
-          started_at?: string
-          completed_at?: string | null
-          videos_processed?: number
-          videos_succeeded?: number
-          videos_failed?: number
-          error_summary?: string | null
+          username?: string
+          email?: string
+          team_name?: string | null
+          member_names?: string[]
+          created_at?: string
+          updated_at?: string
+          suspended_at?: string | null
+          suspension_reason?: string | null
         }
         Relationships: []
       }
@@ -676,6 +676,7 @@ export type Database = {
         | "other"
       sync_status:
         | "idle"
+        | "pending"
         | "syncing"
         | "success"
         | "error"

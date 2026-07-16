@@ -14,10 +14,19 @@ import {
   ArrowUpDown,
   Clapperboard,
   Users,
+  Copy,
+  RotateCcw,
 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { supabase } from "@/integrations/supabase/client";
 import { syncVideoAnalytics } from "@/lib/analytics.functions";
+import { 
+  adminEditContent, 
+  adminDuplicateContent, 
+  adminRestoreContent, 
+  adminBulkRestore, 
+  adminBulkPlatformChange 
+} from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -91,6 +100,15 @@ function AdminVideoLinksPage() {
     url: "",
     platform: "youtube" as Platform,
     status: "valid" as LinkStatus,
+    thumbnailUrl: "",
+    notes: "",
+    views: 0,
+    likes: 0,
+    comments: 0,
+    watchTimeSeconds: 0,
+    engagementRate: 0.00,
+    syncStatus: "idle",
+    manualOverride: false,
   });
 
   // Query: Fetch profiles to map "Creator" (Task 4)
@@ -112,7 +130,6 @@ function AdminVideoLinksPage() {
         .from("content")
         .select("*, metrics:content_metrics(*), group:groups(team_name)")
         .eq("content_type", "video")
-        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return ((data ?? []) as Array<ContentWithMetrics & { group?: { team_name: string | null } }>).map((row) => ({
@@ -141,14 +158,19 @@ function AdminVideoLinksPage() {
         // Platform
         if (platformFilter !== "all" && v.platform !== platformFilter) return false;
 
-        // Status
-        if (statusFilter !== "all") {
-          const match =
-            (statusFilter === "pending" && (v.sync_status === "idle" || v.sync_status === "pending")) ||
-            v.sync_status === statusFilter ||
-            (statusFilter === "unsupported" && v.sync_status === "error" && v.api_error === "Platform analytics not supported without OAuth") ||
-            (statusFilter === "failed" && v.sync_status === "error" && v.api_error !== "Platform analytics not supported without OAuth");
-          if (!match) return false;
+        // Status and soft-delete filtering: If filtering for deleted, show deleted. Else, show active ones.
+        if (statusFilter === "deleted") {
+          if (!v.deleted_at) return false;
+        } else {
+          if (v.deleted_at) return false;
+          if (statusFilter !== "all") {
+            const match =
+              (statusFilter === "pending" && (v.sync_status === "idle" || v.sync_status === "pending")) ||
+              v.sync_status === statusFilter ||
+              (statusFilter === "unsupported" && v.sync_status === "error" && v.api_error === "Platform analytics not supported without OAuth") ||
+              (statusFilter === "failed" && v.sync_status === "error" && v.api_error !== "Platform analytics not supported without OAuth");
+            if (!match) return false;
+          }
         }
 
         // Views range
@@ -209,24 +231,41 @@ function AdminVideoLinksPage() {
 
   const totalPages = Math.max(1, Math.ceil(filteredVideos.length / pageSize));
 
+  const editContentFn = useServerFn(adminEditContent);
+  const duplicateContentFn = useServerFn(adminDuplicateContent);
+  const restoreContentFn = useServerFn(adminRestoreContent);
+  const bulkRestoreFn = useServerFn(adminBulkRestore);
+  const bulkPlatformChangeFn = useServerFn(adminBulkPlatformChange);
+
   // Single Item Mutations
   const updateLink = useMutation({
     mutationFn: async ({ id, values }: { id: string; values: typeof editForm }) => {
-      const { error } = await supabase
-        .from("content")
-        .update({
+      const res = await editContentFn({
+        data: {
+          id,
           title: values.title || null,
           url: values.url,
-          platform_id: values.platform,
+          platform: values.platform,
           status: values.status,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id);
-      if (error) throw error;
+          thumbnailUrl: values.thumbnailUrl || null,
+          notes: values.notes || null,
+          views: Number(values.views),
+          likes: Number(values.likes),
+          comments: Number(values.comments),
+          watchTimeSeconds: Number(values.watchTimeSeconds),
+          engagementRate: Number(values.engagementRate),
+          syncStatus: values.syncStatus,
+          manualOverride: values.manualOverride,
+        }
+      });
+      if (!res.ok) throw new Error("Failed to update content details");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-video-links-list"] });
       qc.invalidateQueries({ queryKey: ["video-links-all"] });
+      qc.invalidateQueries({ queryKey: ["video-links"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+      qc.invalidateQueries({ queryKey: ["group-analytics-summary"] });
       setEditingLink(null);
       toast.success("Content details saved");
     },
@@ -244,8 +283,43 @@ function AdminVideoLinksPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-video-links-list"] });
       qc.invalidateQueries({ queryKey: ["video-links-all"] });
+      qc.invalidateQueries({ queryKey: ["video-links"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+      qc.invalidateQueries({ queryKey: ["group-analytics-summary"] });
       setSelectedIds((prev) => prev.filter((item) => item !== editingLink?.id));
       toast.success("Content link deleted");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const restoreLink = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await restoreContentFn({ data: { id } });
+      if (!res.ok) throw new Error("Failed to restore link");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-video-links-list"] });
+      qc.invalidateQueries({ queryKey: ["video-links-all"] });
+      qc.invalidateQueries({ queryKey: ["video-links"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+      qc.invalidateQueries({ queryKey: ["group-analytics-summary"] });
+      toast.success("Content link restored successfully");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const duplicateLink = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await duplicateContentFn({ data: { id } });
+      if (!res.ok) throw new Error("Failed to duplicate content");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-video-links-list"] });
+      qc.invalidateQueries({ queryKey: ["video-links-all"] });
+      qc.invalidateQueries({ queryKey: ["video-links"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+      qc.invalidateQueries({ queryKey: ["group-analytics-summary"] });
+      toast.success("Content duplicate created");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -259,6 +333,7 @@ function AdminVideoLinksPage() {
       qc.invalidateQueries({ queryKey: ["video-links-all"] });
       qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
       qc.invalidateQueries({ queryKey: ["video-links"] });
+      qc.invalidateQueries({ queryKey: ["group-analytics-summary"] });
       toast.success("Sync operation started successfully");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -276,8 +351,45 @@ function AdminVideoLinksPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-video-links-list"] });
       qc.invalidateQueries({ queryKey: ["video-links-all"] });
+      qc.invalidateQueries({ queryKey: ["video-links"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+      qc.invalidateQueries({ queryKey: ["group-analytics-summary"] });
       setSelectedIds([]);
       toast.success("Bulk delete complete");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bulkRestore = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await bulkRestoreFn({ data: { ids } });
+      if (!res.ok) throw new Error("Failed to bulk restore");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-video-links-list"] });
+      qc.invalidateQueries({ queryKey: ["video-links-all"] });
+      qc.invalidateQueries({ queryKey: ["video-links"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+      qc.invalidateQueries({ queryKey: ["group-analytics-summary"] });
+      setSelectedIds([]);
+      toast.success("Bulk restore complete");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bulkPlatformChange = useMutation({
+    mutationFn: async ({ ids, platformId }: { ids: string[]; platformId: Platform }) => {
+      const res = await bulkPlatformChangeFn({ data: { ids, platformId } });
+      if (!res.ok) throw new Error("Failed to change platform in bulk");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-video-links-list"] });
+      qc.invalidateQueries({ queryKey: ["video-links-all"] });
+      qc.invalidateQueries({ queryKey: ["video-links"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+      qc.invalidateQueries({ queryKey: ["group-analytics-summary"] });
+      setSelectedIds([]);
+      toast.success("Bulk platform change completed");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -291,6 +403,9 @@ function AdminVideoLinksPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-video-links-list"] });
       qc.invalidateQueries({ queryKey: ["video-links-all"] });
+      qc.invalidateQueries({ queryKey: ["video-links"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+      qc.invalidateQueries({ queryKey: ["group-analytics-summary"] });
       setSelectedIds([]);
       toast.success("Bulk synchronizations initiated");
     },
@@ -361,6 +476,15 @@ function AdminVideoLinksPage() {
       url: video.url ?? "",
       platform: video.platform ?? "youtube",
       status: video.status ?? "valid",
+      thumbnailUrl: video.thumbnail_url ?? "",
+      notes: (video as any).notes ?? "",
+      views: Number(video.last_view_count ?? 0),
+      likes: Number(video.last_like_count ?? 0),
+      comments: Number(video.last_comment_count ?? 0),
+      watchTimeSeconds: Number((video as any).watch_time_seconds ?? 0),
+      engagementRate: Number((video as any).engagement_rate ?? 0.00),
+      syncStatus: video.sync_status ?? "idle",
+      manualOverride: (video as any).manual_override ?? false,
     });
   };
 
