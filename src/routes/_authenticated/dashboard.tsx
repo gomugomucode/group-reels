@@ -36,6 +36,8 @@ import { SyncStatusBadge } from "@/components/sync-status-badge";
 import { RefreshButton } from "@/components/refresh-button";
 import { ContentDetailDialog } from "@/components/content-detail-dialog";
 import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/empty-state";
+import { friendlyError } from "@/lib/error-messages";
 import {
   Select,
   SelectContent,
@@ -102,7 +104,8 @@ function DashboardPage() {
       toast.success("Invitation accepted!");
       qc.invalidateQueries();
     } catch (e: any) {
-      toast.error(e.message || "Failed to accept invitation");
+      console.error("[AcceptInvite] error:", e);
+      toast.error(friendlyError(e));
     }
   };
 
@@ -112,7 +115,8 @@ function DashboardPage() {
       toast.success("Invitation rejected");
       qc.invalidateQueries();
     } catch (e: any) {
-      toast.error(e.message || "Failed to reject invitation");
+      console.error("[RejectInvite] error:", e);
+      toast.error(friendlyError(e));
     }
   };
 
@@ -123,7 +127,14 @@ function DashboardPage() {
         (v.title ?? "").toLowerCase().includes(search.toLowerCase()) ||
         v.url.toLowerCase().includes(search.toLowerCase());
       const matchPlatform = platform === "all" || v.platform === platform;
-      const matchStatus = status === "all" || v.status === status;
+      
+      const matchStatus =
+        status === "all" ||
+        (status === "pending" && (v.sync_status === "idle" || (v.sync_status as string) === "pending")) ||
+        v.sync_status === status ||
+        (status === "unsupported" && v.sync_status === "error" && v.api_error === "Platform analytics not supported without OAuth") ||
+        (status === "failed" && v.sync_status === "error" && v.api_error !== "Platform analytics not supported without OAuth");
+
       return matchSearch && matchPlatform && matchStatus;
     });
   }, [videos, search, platform, status]);
@@ -272,18 +283,16 @@ function DashboardPage() {
           ))}
         </div>
       ) : allGroups.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center">
-          <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/15 text-primary">
-            <Users className="size-7" />
-          </div>
-          <h2 className="mt-4 text-xl font-semibold">Create your team group</h2>
-          <p className="mx-auto mt-2 max-w-md text-muted-foreground">
-            Set up your group to start tracking your team's social media content.
-          </p>
-          <Button className="mt-6" onClick={() => navigate({ to: "/groups/new" })}>
-            <Plus className="mr-1 size-4" /> Create group
-          </Button>
-        </div>
+        <EmptyState
+          icon={Users}
+          title="Create your team group"
+          description="Set up your group to start tracking your team's social media content."
+          cta={
+            <Button onClick={() => navigate({ to: "/groups/new" })}>
+              <Plus className="mr-1.5 size-4" /> Create group
+            </Button>
+          }
+        />
       ) : (
         <>
           {/* Creator Insights Module */}
@@ -330,14 +339,18 @@ function DashboardPage() {
                 </SelectContent>
               </Select>
               <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="w-36">
+                <SelectTrigger className="w-56">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="valid">Valid</SelectItem>
-                  <SelectItem value="invalid">Invalid</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="syncing">Syncing</SelectItem>
+                  <SelectItem value="success">Synced</SelectItem>
+                  <SelectItem value="unsupported">Statistics Unavailable</SelectItem>
+                  <SelectItem value="failed">Sync Failed</SelectItem>
+                  <SelectItem value="private">Private</SelectItem>
+                  <SelectItem value="deleted">Deleted</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -345,12 +358,39 @@ function DashboardPage() {
             {/* Content rows */}
             <div className="divide-y divide-border">
               {filtered.length === 0 ? (
-                <div className="p-12 text-center">
-                  <p className="text-muted-foreground">
-                    {videos.length === 0
-                      ? "No content yet. Click 'Add Content' to get started."
-                      : "No content matches your filters."}
-                  </p>
+                <div className="p-6">
+                  {videos.length === 0 ? (
+                    <EmptyState
+                      icon={Video}
+                      title="No content yet"
+                      description="Click 'Add Content' to start tracking your team's social media content."
+                      cta={
+                        <Button asChild>
+                          <Link to="/content/new">
+                            <Plus className="mr-1.5 size-4" /> Add Content
+                          </Link>
+                        </Button>
+                      }
+                    />
+                  ) : (
+                    <EmptyState
+                      icon={Search}
+                      title="No results found"
+                      description="We couldn't find any content matching your filters. Try adjusting or clearing them."
+                      cta={
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setSearch("");
+                            setPlatform("all");
+                            setStatus("all");
+                          }}
+                        >
+                          Clear filters
+                        </Button>
+                      }
+                    />
+                  )}
                 </div>
               ) : (
                 filtered.map((v) => (
@@ -382,25 +422,37 @@ function DashboardPage() {
                             canRefresh={true}
                           />
                         )}
-                        <Button variant="ghost" size="icon" onClick={() => { setDetailVideo(v); setDetailOpen(true); }} title="View Analytics">
+                        <Button variant="ghost" size="icon" onClick={() => { setDetailVideo(v); setDetailOpen(true); }} title="View Analytics" aria-label="View analytics">
                           <BarChart3 className="size-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => { setEditingLink(v); setDialogOpen(true); }}>
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingLink(v); setDialogOpen(true); }} title="Edit content" aria-label="Edit content">
                           <Pencil className="size-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="text-destructive hover:bg-destructive/10"
-                          onClick={() => {
+                          title="Delete content"
+                          aria-label="Delete content"
+                          onClick={async () => {
                             if (confirm("Delete this content?")) {
-                              supabase.from("content").update({ deleted_at: new Date().toISOString() }).eq("id", v.id).then(() => {
+                              const toastId = toast.loading("Deleting content...");
+                              try {
+                                const { error } = await supabase
+                                  .from("content")
+                                  .update({ deleted_at: new Date().toISOString() })
+                                  .eq("id", v.id);
+                                if (error) throw error;
+                                toast.success("Content deleted successfully!", { id: toastId });
                                 qc.invalidateQueries({ queryKey: ["video-links"] });
                                 qc.invalidateQueries({ queryKey: ["video-links-all"] });
                                 qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
                                 qc.invalidateQueries({ queryKey: ["admin-video-links-list"] });
                                 qc.invalidateQueries({ queryKey: ["group-analytics-summary"] });
-                              });
+                              } catch (err: any) {
+                                console.error("[DeleteContent] error:", err);
+                                toast.error(friendlyError(err), { id: toastId });
+                              }
                             }
                           }}
                         >

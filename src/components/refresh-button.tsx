@@ -5,6 +5,8 @@ import { useSyncVideoAnalytics } from "@/hooks/use-data";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { friendlyError } from "@/lib/error-messages";
+
 interface RefreshButtonProps {
   videoLinkId: string;
   lastFetchedAt: string | null | undefined;
@@ -60,10 +62,12 @@ export function RefreshButton({
       if (res.ok) {
         toast.success("Video statistics updated!", { id: toastId });
       } else {
-        toast.error(res.error || "Failed to update video metrics", { id: toastId });
+        console.error("[RefreshButton] sync error:", res.error);
+        toast.error(friendlyError(res.error || "Failed to update video metrics"), { id: toastId });
       }
     } catch (err: any) {
-      toast.error(err.message || "An unexpected error occurred during sync", { id: toastId });
+      console.error("[RefreshButton] unexpected sync error:", err);
+      toast.error(friendlyError(err), { id: toastId });
     }
   };
 
@@ -88,6 +92,7 @@ export function RefreshButton({
       disabled={isBtnDisabled}
       className={size === "icon" ? "size-8" : ""}
       title={getTooltip()}
+      aria-label={getTooltip()}
     >
       <RefreshCw className={`size-4 ${loading || syncStatus === "syncing" ? "animate-spin text-primary" : ""}`} />
       {size !== "icon" && <span className="ml-2">{loading || syncStatus === "syncing" ? "Syncing..." : "Refresh"}</span>}

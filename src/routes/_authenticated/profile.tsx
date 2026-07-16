@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import React, { Suspense, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useAllVideoLinks, useMyMemberships } from "@/hooks/use-data";
@@ -7,8 +7,16 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatCard } from "@/components/stat-card";
 import { Video, Heart, Eye, Users, Activity } from "lucide-react";
 import { formatCount } from "@/lib/youtube";
-import { PieChart, Pie, Cell, Tooltip as ChartTooltip, ResponsiveContainer } from "recharts";
 import { PLATFORM_LABELS } from "@/lib/video-platforms";
+import { EmptyState } from "@/components/empty-state";
+import { ActivityFeed } from "@/components/activity-feed";
+
+// Lazy-loaded recharts components
+const ResponsiveContainer = React.lazy(() => import("recharts").then(m => ({ default: m.ResponsiveContainer })));
+const PieChart = React.lazy(() => import("recharts").then(m => ({ default: m.PieChart })));
+const Pie = React.lazy(() => import("recharts").then(m => ({ default: m.PieChart })));
+const Cell = React.lazy(() => import("recharts").then(m => ({ default: m.Cell })));
+const ChartTooltip = React.lazy(() => import("recharts").then(m => ({ default: m.Tooltip })));
 
 export const Route = createFileRoute("/_authenticated/profile")({
   component: ProfilePage,
@@ -22,20 +30,21 @@ function ProfilePage() {
   const { data: memberships = [] } = useMyMemberships(user?.id);
 
   const myVideos = useMemo(() => videos.filter(v => v.created_by === user?.id), [videos, user]);
+  const activeMyVideos = useMemo(() => myVideos.filter(v => !v.deleted_at), [myVideos]);
 
   const stats = useMemo(() => {
     let views = 0;
     let likes = 0;
     const platformCounts: Record<string, number> = {};
 
-    myVideos.forEach(v => {
+    activeMyVideos.forEach(v => {
       views += v.last_view_count || 0;
       likes += v.last_like_count || 0;
       platformCounts[v.platform] = (platformCounts[v.platform] || 0) + 1;
     });
 
     return { views, likes, platformCounts };
-  }, [myVideos]);
+  }, [activeMyVideos]);
 
   const platformData = useMemo(() => {
     return Object.entries(stats.platformCounts).map(([name, value]) => ({
@@ -78,7 +87,7 @@ function ProfilePage() {
         {/* Global Statistics */}
         <div className="md:col-span-2 space-y-6">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="My Content" value={myVideos.length.toString()} icon={<Video className="size-4" />} accent />
+            <StatCard label="My Content" value={activeMyVideos.length.toString()} icon={<Video className="size-4" />} accent />
             <StatCard label="Total Views" value={formatCount(stats.views)} icon={<Eye className="size-4" />} />
             <StatCard label="Total Likes" value={formatCount(stats.likes)} icon={<Heart className="size-4" />} />
             <StatCard label="Teams" value={memberships.length.toString()} icon={<Users className="size-4" />} />
@@ -89,35 +98,40 @@ function ProfilePage() {
               <h3 className="text-sm font-semibold mb-4">Content by Platform</h3>
               <div className="h-48">
                 {platformData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={platformData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={70}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {platformData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip 
-                        contentStyle={{
-                            background: "var(--color-popover)",
-                            border: "1px solid var(--color-border)",
-                            borderRadius: 8,
-                            color: "var(--color-popover-foreground)",
-                          }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <Suspense fallback={<div className="h-full flex items-center justify-center text-muted-foreground text-xs animate-pulse">Loading chart...</div>}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={platformData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={70}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {platformData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <ChartTooltip 
+                          contentStyle={{
+                              background: "var(--color-popover)",
+                              border: "1px solid var(--color-border)",
+                              borderRadius: 8,
+                              color: "var(--color-popover-foreground)",
+                            }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </Suspense>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                    No content uploaded yet.
-                  </div>
+                  <EmptyState
+                    compact
+                    icon={Video}
+                    title="No content yet"
+                    description="Upload details to display platform distribution chart."
+                  />
                 )}
               </div>
             </div>
@@ -126,20 +140,7 @@ function ProfilePage() {
               <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
                 <Activity className="size-4 text-primary" /> Recent Activity
               </h3>
-              <div className="space-y-4">
-                {myVideos.slice(0, 4).map(v => (
-                  <div key={v.id} className="flex items-start gap-3">
-                    <div className="mt-1 size-2 rounded-full bg-primary shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium line-clamp-1">Added {v.title || "video"}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(v.created_at).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                ))}
-                {myVideos.length === 0 && (
-                   <p className="text-sm text-muted-foreground">No recent activity.</p>
-                )}
-              </div>
+              <ActivityFeed videos={myVideos} />
             </div>
           </div>
         </div>

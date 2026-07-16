@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { AppLayout } from "@/components/app-layout";
+import { EmptyState } from "@/components/empty-state";
 import { AdminLeaderboards } from "@/components/admin-leaderboards";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -210,8 +211,12 @@ function AnalyticsSettingsPage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
-                        No analytics records available yet.
+                      <TableCell colSpan={5} className="py-8">
+                        <EmptyState
+                          icon={Database}
+                          title="No analytics records yet"
+                          description="Synchronize video links across workspace groups to display platform-wide analytics."
+                        />
                       </TableCell>
                     </TableRow>
                   )}

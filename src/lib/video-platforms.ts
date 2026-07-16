@@ -14,6 +14,15 @@ export const PLATFORMS: Platform[] = [
   "other",
 ];
 
+export const SUPPORTED_PLATFORMS: Platform[] = [
+  "youtube",
+  "tiktok",
+  "instagram",
+  "facebook",
+  "vimeo",
+  "linkedin",
+];
+
 export const PLATFORM_LABELS: Record<Platform, string> = {
   youtube: "YouTube",
   tiktok: "TikTok",

@@ -3,7 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 export type Group = Database["public"]["Tables"]["groups"]["Row"];
-export type VideoLink = Database["public"]["Tables"]["video_links"]["Row"];
+export type VideoLink = Database["public"]["Tables"]["video_links"]["Row"] & {
+  deleted_at?: string | null;
+};
 export type Content = Database["public"]["Tables"]["content"]["Row"];
 export type ContentMetrics = Database["public"]["Tables"]["content_metrics"]["Row"];
 export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
@@ -37,6 +39,7 @@ export function mapContentToVideoLink(row: ContentWithMetrics): VideoLink {
     last_synced: metrics?.last_synced ?? null,
     sync_status: (metrics?.sync_status ?? "idle") as VideoLink["sync_status"],
     api_error: metrics?.api_error ?? null,
+    deleted_at: row.deleted_at,
   };
 }
 
@@ -118,12 +121,12 @@ export function useAllVideoLinks() {
     queryKey: ["video-links-all"],
     staleTime: 60_000,
     gcTime: 300_000,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("content")
         .select("*, metrics:content_metrics(*)")
         .eq("content_type", "video")
-        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return ((data ?? []) as ContentWithMetrics[]).map(mapContentToVideoLink);
@@ -466,6 +469,7 @@ export function useAdminAnalyticsSummary() {
     queryKey: ["admin-analytics-summary"],
     staleTime: 60_000,
     gcTime: 300_000,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const [{ data: groups, error: groupsErr }, { data: content, error: contentErr }] = await Promise.all([
         supabase.from("groups").select("id, team_name"),

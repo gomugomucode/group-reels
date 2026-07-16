@@ -4,7 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface SyncStatusBadgeProps {
-  status: "idle" | "syncing" | "success" | "error" | "private" | "deleted";
+  status: "idle" | "pending" | "syncing" | "success" | "error" | "private" | "deleted";
   apiError?: string | null;
   lastSynced?: string | null;
   className?: string;
@@ -39,7 +39,7 @@ export function SyncStatusBadge({
           title={syncTime}
         >
           <CheckCircle2 className="size-3" />
-          <span>Success</span>
+          <span>Synced</span>
         </Badge>
       );
     case "private":
@@ -80,6 +80,7 @@ export function SyncStatusBadge({
           <span>{isUnsupported ? "Statistics unavailable" : "Sync Failed"}</span>
         </Badge>
       );
+    case "pending":
     case "idle":
     default:
       return (
@@ -88,7 +89,7 @@ export function SyncStatusBadge({
           className={cn("gap-1 border-border bg-card text-muted-foreground", className)}
         >
           <ClockIcon className="size-3" />
-          <span>Pending</span>
+          <span>Pending sync</span>
         </Badge>
       );
   }

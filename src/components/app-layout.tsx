@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Clapperboard, LayoutDashboard, Shield, LogOut, Users, Activity, FileText } from "lucide-react";
+import { Clapperboard, LayoutDashboard, Shield, LogOut, Users, Activity, FileText, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,7 @@ export function AppHeader() {
 
         <nav className="flex items-center gap-1">
           <NavItem to="/dashboard" icon={<LayoutDashboard className="size-4" />} label="Dashboard" />
+          <NavItem to="/settings" icon={<Settings className="size-4" />} label="Settings" />
           {isAdmin && (
             <>
               <NavItem to="/admin" icon={<Shield className="size-4" />} label="Admin" />
@@ -100,6 +101,11 @@ export function AppHeader() {
               <DropdownMenuItem asChild>
                 <Link to="/profile" className="cursor-pointer">
                   My Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/settings" className="cursor-pointer">
+                  Settings
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={handleSignOut} className="text-destructive">

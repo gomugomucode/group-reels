@@ -7,10 +7,12 @@ import { formatCount } from "@/lib/youtube";
 
 export function AdminLeaderboards() {
   const { data: profiles = [], isLoading: profilesLoading } = useAllProfiles(true);
-  const { data: videos = [], isLoading: videosLoading } = useAllVideoLinks();
+  const { data: rawVideos = [], isLoading: videosLoading } = useAllVideoLinks();
   const { data: groups = [], isLoading: groupsLoading } = useAllGroups();
 
   const isLoading = profilesLoading || videosLoading || groupsLoading;
+
+  const videos = useMemo(() => rawVideos.filter(v => !v.deleted_at), [rawVideos]);
 
   const leaderboards = useMemo(() => {
     if (isLoading) return null;

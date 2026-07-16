@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
@@ -73,7 +73,7 @@ function AdminVideoLinksPage() {
   // States
   const [search, setSearch] = useState("");
   const [platformFilter, setPlatformFilter] = useState<"all" | Platform>("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | LinkStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [viewsFilter, setViewsFilter] = useState("all");
   const [likesFilter, setLikesFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
@@ -106,6 +106,7 @@ function AdminVideoLinksPage() {
   // Query: Fetch all content rows with metrics (Task 4 & 12)
   const { data: videosData = [], isLoading } = useQuery({
     queryKey: ["admin-video-links-list"],
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("content")
@@ -141,7 +142,14 @@ function AdminVideoLinksPage() {
         if (platformFilter !== "all" && v.platform !== platformFilter) return false;
 
         // Status
-        if (statusFilter !== "all" && v.status !== statusFilter) return false;
+        if (statusFilter !== "all") {
+          const match =
+            (statusFilter === "pending" && (v.sync_status === "idle" || v.sync_status === "pending")) ||
+            v.sync_status === statusFilter ||
+            (statusFilter === "unsupported" && v.sync_status === "error" && v.api_error === "Platform analytics not supported without OAuth") ||
+            (statusFilter === "failed" && v.sync_status === "error" && v.api_error !== "Platform analytics not supported without OAuth");
+          if (!match) return false;
+        }
 
         // Views range
         if (viewsFilter !== "all") {
@@ -500,7 +508,7 @@ function AdminVideoLinksPage() {
             value={statusFilter}
             onValueChange={(v) => {
               setPage(1);
-              setStatusFilter(v as "all" | LinkStatus);
+              setStatusFilter(v);
             }}
           >
             <SelectTrigger className="h-9 text-xs">
@@ -511,9 +519,13 @@ function AdminVideoLinksPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Status: All</SelectItem>
-              <SelectItem value="valid">Status: Valid</SelectItem>
-              <SelectItem value="invalid">Status: Invalid</SelectItem>
               <SelectItem value="pending">Status: Pending</SelectItem>
+              <SelectItem value="syncing">Status: Syncing</SelectItem>
+              <SelectItem value="success">Status: Synced</SelectItem>
+              <SelectItem value="unsupported">Status: Statistics Unavailable</SelectItem>
+              <SelectItem value="failed">Status: Sync Failed</SelectItem>
+              <SelectItem value="private">Status: Private</SelectItem>
+              <SelectItem value="deleted">Status: Deleted</SelectItem>
             </SelectContent>
           </Select>
         </div>

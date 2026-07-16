@@ -29,6 +29,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { syncVideoAnalytics } from "@/lib/analytics.functions";
+import { EmptyState } from "@/components/empty-state";
 
 export function ContentDetailDialog({
   video,
@@ -189,9 +190,12 @@ export function ContentDetailDialog({
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                    {chartData.length === 1 ? "Not enough data for chart (need at least 2 points)" : "No historical data available."}
-                  </div>
+                  <EmptyState
+                    compact
+                    icon={Clock}
+                    title="No analytics history yet"
+                    description="We are still gathering performance records for this link. Check back in a few hours."
+                  />
                 )}
               </div>
             </div>
