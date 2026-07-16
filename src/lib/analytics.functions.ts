@@ -107,7 +107,22 @@ async function executeSyncVideoAnalytics(
   const video = mapContentToVideoLink(row);
 
   if (video.platform !== "youtube") {
-    throw new Error("Only YouTube videos are currently supported for analytics sync");
+    const now = new Date().toISOString();
+    await supabaseAdmin
+      .from("content_metrics")
+      .update({
+        sync_status: "error",
+        api_error: "Platform analytics not supported without OAuth",
+        last_fetched_at: now,
+      })
+      .eq("content_id", video.id);
+
+    return { 
+      ok: true, 
+      video: { ...video, sync_status: "error", api_error: "Platform analytics not supported without OAuth" }, 
+      skipped: true, 
+      reason: "Platform not supported" 
+    };
   }
 
   // Rate-limit check: maximum once every 5 minutes unless forced by owner/admin
@@ -207,6 +222,7 @@ async function executeSyncVideoAnalytics(
       supabaseAdmin
         .from("content")
         .update({
+          title: parsedStats.title,
           thumbnail_url: parsedStats.thumbnailUrl,
           published_at: parsedStats.publishedAt,
           duration_seconds: parsedStats.durationSeconds,
@@ -316,7 +332,6 @@ export const syncGroupAnalytics = createServerFn({ method: "POST" })
       .from("content")
       .select("id")
       .eq("group_id", data.groupId)
-      .eq("platform_id", "youtube")
       .is("deleted_at", null);
 
     if (error) throw error;
@@ -357,7 +372,6 @@ export const triggerFullSync = createServerFn({ method: "POST" })
     const { data: videos, error } = await supabaseAdmin
       .from("content")
       .select("id")
-      .eq("platform_id", "youtube")
       .is("deleted_at", null);
 
     if (error) throw error;

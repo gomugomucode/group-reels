@@ -945,6 +945,8 @@ function GroupDetailPage() {
                         views={v.last_view_count}
                         likes={v.last_like_count}
                         comments={v.last_comment_count}
+                        syncStatus={v.sync_status}
+                        apiError={v.api_error}
                         className="mt-2"
                       />
                     </div>
@@ -958,7 +960,6 @@ function GroupDetailPage() {
                       
                       <div className="flex items-center gap-1">
                         {/* Refresh Button */}
-                        {v.platform === "youtube" && (
                           <RefreshButton
                             videoLinkId={v.id}
                             groupId={id}
@@ -966,7 +967,6 @@ function GroupDetailPage() {
                             syncStatus={v.sync_status}
                             canRefresh={canEditLink(v)}
                           />
-                        )}
 
                         {canEditLink(v) && (
                           <>

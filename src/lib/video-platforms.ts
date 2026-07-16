@@ -32,20 +32,11 @@ export const PLATFORM_COLOR_VAR: Record<Platform, string> = {
   other: "var(--color-muted-foreground)",
 };
 
-const PLATFORM_PATTERNS: { platform: Platform; test: RegExp }[] = [
-  { platform: "youtube", test: /(youtube\.com|youtu\.be)/i },
-  { platform: "tiktok", test: /tiktok\.com/i },
-  { platform: "instagram", test: /instagram\.com/i },
-  { platform: "facebook", test: /(facebook\.com|fb\.watch|fb\.com)/i },
-  { platform: "vimeo", test: /vimeo\.com/i },
-];
+import { parseUrl } from "./url-parser";
 
 /** Detect the platform from a URL string. Falls back to "other". */
 export function detectPlatform(url: string): Platform {
-  for (const { platform, test } of PLATFORM_PATTERNS) {
-    if (test.test(url)) return platform;
-  }
-  return "other";
+  return parseUrl(url).platform;
 }
 
 /** Basic URL format validation used both client- and server-side. */

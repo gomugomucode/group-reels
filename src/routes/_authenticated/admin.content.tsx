@@ -681,10 +681,10 @@ function AdminVideoLinksPage() {
                           {video.group?.team_name ?? "—"}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {video.last_view_count?.toLocaleString() || "0"}
+                          {video.last_view_count == null ? "—" : video.last_view_count.toLocaleString()}
                         </TableCell>
                         <TableCell className="text-right text-rose-500">
-                          {video.last_like_count?.toLocaleString() || "0"}
+                          {video.last_like_count == null ? "—" : video.last_like_count.toLocaleString()}
                         </TableCell>
                         <TableCell>
                           <Badge

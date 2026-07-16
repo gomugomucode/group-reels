@@ -380,12 +380,12 @@ function DashboardPage() {
                           {v.url} <ExternalLink className="size-3 shrink-0" />
                         </a>
                       </div>
-                      <VideoStatsBadge views={v.last_view_count} likes={v.last_like_count} comments={v.last_comment_count} className="mt-2" />
+                      <VideoStatsBadge views={v.last_view_count} likes={v.last_like_count} comments={v.last_comment_count} syncStatus={v.sync_status} apiError={v.api_error} className="mt-2" />
                     </div>
                     <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
                       <SyncStatusBadge status={v.sync_status} apiError={v.api_error} lastSynced={v.last_synced} />
                       <div className="flex items-center gap-1">
-                        {v.platform === "youtube" && activeGroupId && (
+                        {activeGroupId && (
                           <RefreshButton
                             videoLinkId={v.id}
                             groupId={activeGroupId}

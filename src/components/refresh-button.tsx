@@ -1,8 +1,7 @@
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { syncVideoAnalytics } from "@/lib/analytics.functions";
+import { useSyncVideoAnalytics } from "@/hooks/use-data";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -28,8 +27,8 @@ export function RefreshButton({
   variant = "ghost",
 }: RefreshButtonProps) {
   const queryClient = useQueryClient();
-  const syncFn = useServerFn(syncVideoAnalytics);
-  const [loading, setLoading] = useState(false);
+  const syncMutation = useSyncVideoAnalytics();
+  const loading = syncMutation.isPending;
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
 
   useEffect(() => {
@@ -55,24 +54,16 @@ export function RefreshButton({
     e.stopPropagation();
     if (!canRefresh || cooldownSeconds > 0 || loading) return;
 
-    setLoading(true);
     const toastId = toast.loading("Syncing video statistics...");
     try {
-      const res = await syncFn({ data: { videoLinkId, force: true } });
+      const res = await syncMutation.mutateAsync({ videoLinkId, force: true });
       if (res.ok) {
         toast.success("Video statistics updated!", { id: toastId });
-        queryClient.invalidateQueries({ queryKey: ["video-links", groupId] });
-        queryClient.invalidateQueries({ queryKey: ["video-links-all"] });
-        queryClient.invalidateQueries({ queryKey: ["video-metrics-history", videoLinkId] });
-        queryClient.invalidateQueries({ queryKey: ["group-analytics-summary", groupId] });
-        queryClient.invalidateQueries({ queryKey: ["admin-analytics-summary"] });
       } else {
         toast.error(res.error || "Failed to update video metrics", { id: toastId });
       }
     } catch (err: any) {
       toast.error(err.message || "An unexpected error occurred during sync", { id: toastId });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -86,7 +77,7 @@ export function RefreshButton({
       const seconds = cooldownSeconds % 60;
       return `Rate limited. Wait ${minutes}m ${seconds}s before refreshing again.`;
     }
-    return "Force sync video statistics from YouTube";
+    return "Force sync video statistics";
   };
 
   return (

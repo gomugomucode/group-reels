@@ -6,6 +6,8 @@ interface VideoStatsBadgeProps {
   views: number | null | undefined;
   likes?: number | null | undefined;
   comments?: number | null | undefined;
+  syncStatus?: string;
+  apiError?: string | null;
   className?: string;
   horizontal?: boolean;
 }
@@ -14,9 +16,15 @@ export function VideoStatsBadge({
   views,
   likes,
   comments,
+  syncStatus,
+  apiError,
   className = "",
   horizontal = true,
 }: VideoStatsBadgeProps) {
+  if (syncStatus === "error" && apiError === "Platform analytics not supported without OAuth") {
+    return <span className="text-xs text-muted-foreground italic">Statistics unavailable</span>;
+  }
+
   if (views == null && likes == null && comments == null) {
     return <span className="text-xs text-muted-foreground">—</span>;
   }

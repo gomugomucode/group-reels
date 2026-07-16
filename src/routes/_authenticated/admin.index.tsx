@@ -678,8 +678,8 @@ function AdminDashboard() {
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-foreground">{formatCount(v.last_view_count ?? 0)} views</p>
-                            <p className="text-[9px] text-muted-foreground">likes: {formatCount(v.last_like_count ?? 0)}</p>
+                            <p className="font-bold text-foreground">{formatCount(v.last_view_count)} views</p>
+                            <p className="text-[9px] text-muted-foreground">likes: {formatCount(v.last_like_count)}</p>
                           </div>
                         </div>
                       ))}

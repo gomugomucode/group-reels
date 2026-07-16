@@ -65,14 +65,19 @@ export function SyncStatusBadge({
         </Badge>
       );
     case "error":
+      const isUnsupported = apiError === "Platform analytics not supported without OAuth";
       return (
         <Badge
           variant="outline"
-          className={cn("gap-1 border-border bg-card text-muted-foreground", className)}
-          title="Refresh later"
+          className={cn(
+            "gap-1 border-border",
+            isUnsupported ? "bg-card text-muted-foreground" : "bg-destructive/15 text-destructive border-destructive/30",
+            className
+          )}
+          title={isUnsupported ? "Analytics not supported for this platform" : (apiError || "Failed to sync")}
         >
-          <AlertCircle className="size-3" />
-          <span>Statistics unavailable</span>
+          {isUnsupported ? <AlertCircle className="size-3" /> : <AlertTriangle className="size-3" />}
+          <span>{isUnsupported ? "Statistics unavailable" : "Sync Failed"}</span>
         </Badge>
       );
     case "idle":

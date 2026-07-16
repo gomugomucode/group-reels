@@ -1,4 +1,4 @@
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -593,6 +593,50 @@ export function useGroupMetricsHistory(groupId: string | undefined) {
           group_id: h.content.group_id,
         },
       })) as any[];
+    },
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Mutations for Analytics Sync
+// -----------------------------------------------------------------------------
+import { syncVideoAnalytics, syncGroupAnalytics } from "@/lib/analytics.functions";
+
+export function useInvalidateAnalytics() {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ["video-links"] });
+    queryClient.invalidateQueries({ queryKey: ["video-links-all"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+    queryClient.invalidateQueries({ queryKey: ["group-analytics-summary"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-analytics-summary"] });
+    queryClient.invalidateQueries({ queryKey: ["top-videos"] });
+    queryClient.invalidateQueries({ queryKey: ["video-metrics-history"] });
+    queryClient.invalidateQueries({ queryKey: ["all-video-metrics-history"] });
+    queryClient.invalidateQueries({ queryKey: ["group-metrics-history"] });
+  };
+}
+
+export function useSyncVideoAnalytics() {
+  const invalidate = useInvalidateAnalytics();
+  return useMutation({
+    mutationFn: async (params: { videoLinkId: string; force?: boolean }) => {
+      return await syncVideoAnalytics({ data: params });
+    },
+    onSuccess: () => {
+      invalidate();
+    },
+  });
+}
+
+export function useSyncGroupAnalytics() {
+  const invalidate = useInvalidateAnalytics();
+  return useMutation({
+    mutationFn: async (params: { groupId: string; force?: boolean }) => {
+      return await syncGroupAnalytics({ data: params });
+    },
+    onSuccess: () => {
+      invalidate();
     },
   });
 }
