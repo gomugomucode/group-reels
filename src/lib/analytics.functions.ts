@@ -402,6 +402,7 @@ export const triggerFullSync = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = supabaseAdmin as any;
 
     // Verify admin access
     await assertAdmin(supabaseAdmin, userId);
@@ -416,7 +417,7 @@ export const triggerFullSync = createServerFn({ method: "POST" })
     if (!videos || videos.length === 0) return { ok: true, processed: 0 };
 
     // Log started sync action
-    const { data: syncLog, error: logErr } = await supabaseAdmin
+    const { data: syncLog, error: logErr } = await db
       .from("analytics_sync_log")
       .insert({
         triggered_by: userId,
@@ -449,7 +450,7 @@ export const triggerFullSync = createServerFn({ method: "POST" })
     }
 
     // Complete the sync log entry
-    await supabaseAdmin
+    await db
       .from("analytics_sync_log")
       .update({
         completed_at: new Date().toISOString(),
@@ -468,11 +469,12 @@ export const getAnalyticsSyncStatus = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = supabaseAdmin as any;
 
     await assertAdmin(supabaseAdmin, userId);
 
     // Get last 15 sync logs
-    const { data: logs, error: logsErr } = await supabaseAdmin
+    const { data: logs, error: logsErr } = await db
       .from("analytics_sync_log")
       .select("*")
       .order("started_at", { ascending: false })

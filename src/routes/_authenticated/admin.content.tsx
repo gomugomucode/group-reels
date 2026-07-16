@@ -33,6 +33,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { VideoThumbnail } from "@/components/video-thumbnail";
 import {
   Table,
@@ -92,6 +94,7 @@ function AdminVideoLinksPage() {
 
   // Selected videos for Bulk Actions
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkPlatformId, setBulkPlatformId] = useState<Platform>("youtube");
 
   // Dialog state
   const [editingLink, setEditingLink] = useState<VideoLink | null>(null);
@@ -469,6 +472,11 @@ function AdminVideoLinksPage() {
     toast.success("CSV file downloaded successfully!");
   };
 
+  const copyContentUrl = async (url: string) => {
+    await navigator.clipboard.writeText(url);
+    toast.success("Content URL copied to clipboard");
+  };
+
   const openEditor = (video: VideoLink) => {
     setEditingLink(video);
     setEditForm({
@@ -524,6 +532,38 @@ function AdminVideoLinksPage() {
               >
                 <RefreshCw className="size-3" />
                 Refresh
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1"
+                onClick={() => bulkRestore.mutate(selectedIds)}
+                disabled={bulkRestore.isPending}
+              >
+                <RotateCcw className="size-3" />
+                Restore
+              </Button>
+              <Select value={bulkPlatformId} onValueChange={(value) => setBulkPlatformId(value as Platform)}>
+                <SelectTrigger className="h-8 w-35 text-xs">
+                  <SelectValue placeholder="Platform" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PLATFORMS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {PLATFORM_LABELS[option]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1"
+                onClick={() => bulkPlatformChange.mutate({ ids: selectedIds, platformId: bulkPlatformId })}
+                disabled={bulkPlatformChange.isPending}
+              >
+                <ArrowUpDown className="size-3" />
+                Apply Platform
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -792,7 +832,7 @@ function AdminVideoLinksPage() {
                             className="size-10 rounded object-cover shadow-sm bg-muted"
                           />
                         </TableCell>
-                        <TableCell className="max-w-[200px]">
+                        <TableCell className="max-w-50">
                           <p className="font-semibold text-foreground truncate" title={video.title ?? "Untitled"}>
                             {video.title ?? "Untitled Content"}
                           </p>
@@ -815,7 +855,7 @@ function AdminVideoLinksPage() {
                             <span className="text-muted-foreground text-[10px]">Unknown</span>
                           )}
                         </TableCell>
-                        <TableCell className="max-w-[100px] truncate">
+                        <TableCell className="max-w-25 truncate">
                           {video.group?.team_name ?? "—"}
                         </TableCell>
                         <TableCell className="text-right font-medium">
@@ -839,10 +879,19 @@ function AdminVideoLinksPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="size-8" title="Open Video Link" asChild>
+                            <Button variant="ghost" size="icon" className="size-8" title="Open Original Content" asChild>
                               <a href={video.url} target="_blank" rel="noreferrer">
                                 <ExternalLink className="size-4" />
                               </a>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
+                              title="Copy content URL"
+                              onClick={() => copyContentUrl(video.url)}
+                            >
+                              <Copy className="size-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -862,28 +911,49 @@ function AdminVideoLinksPage() {
                             >
                               <RefreshCw className="size-4 text-primary" />
                             </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="size-8 text-destructive" title="Delete content link">
-                                  <Trash2 className="size-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete this content link?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This removes the content link from the dashboard group statistics and metrics logs.
-                                    This action is irreversible.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => deleteLink.mutate(video.id)}>
-                                    Delete Link
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
+                              title="Duplicate content"
+                              onClick={() => duplicateLink.mutate(video.id)}
+                            >
+                              <Copy className="size-4" />
+                            </Button>
+                            {video.deleted_at ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-primary"
+                                title="Restore content"
+                                onClick={() => restoreLink.mutate(video.id)}
+                              >
+                                <RotateCcw className="size-4" />
+                              </Button>
+                            ) : (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="size-8 text-destructive" title="Delete content link">
+                                    <Trash2 className="size-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete this content link?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This removes the content link from the dashboard group statistics and metrics logs.
+                                      This action is irreversible.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deleteLink.mutate(video.id)}>
+                                      Delete Link
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -929,28 +999,28 @@ function AdminVideoLinksPage() {
         open={Boolean(editingLink)}
         onOpenChange={(open) => !open && setEditingLink(null)}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Content Link Details</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2 text-xs">
-            <div className="space-y-1.5">
-              <Label htmlFor="video-title">Title / Name</Label>
-              <Input
-                id="video-title"
-                value={editForm.title}
-                onChange={(e) => setEditForm((current) => ({ ...current, title: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="video-url">Video link URL</Label>
-              <Input
-                id="video-url"
-                value={editForm.url}
-                onChange={(e) => setEditForm((current) => ({ ...current, url: e.target.value }))}
-              />
-            </div>
             <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="video-title">Title / Name</Label>
+                <Input
+                  id="video-title"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm((current) => ({ ...current, title: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="video-url">Video link URL</Label>
+                <Input
+                  id="video-url"
+                  value={editForm.url}
+                  onChange={(e) => setEditForm((current) => ({ ...current, url: e.target.value }))}
+                />
+              </div>
               <div className="space-y-1.5">
                 <Label>Platform</Label>
                 <Select
@@ -988,6 +1058,104 @@ function AdminVideoLinksPage() {
                     <SelectItem value="pending">Pending</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="video-thumbnail">Thumbnail URL</Label>
+                <Input
+                  id="video-thumbnail"
+                  value={editForm.thumbnailUrl}
+                  onChange={(e) => setEditForm((current) => ({ ...current, thumbnailUrl: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="video-notes">Admin Notes</Label>
+                <Textarea
+                  id="video-notes"
+                  rows={3}
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm((current) => ({ ...current, notes: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="video-views">Views</Label>
+                <Input
+                  id="video-views"
+                  type="number"
+                  min={0}
+                  value={editForm.views}
+                  onChange={(e) => setEditForm((current) => ({ ...current, views: Number(e.target.value) }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="video-likes">Likes</Label>
+                <Input
+                  id="video-likes"
+                  type="number"
+                  min={0}
+                  value={editForm.likes}
+                  onChange={(e) => setEditForm((current) => ({ ...current, likes: Number(e.target.value) }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="video-comments">Comments</Label>
+                <Input
+                  id="video-comments"
+                  type="number"
+                  min={0}
+                  value={editForm.comments}
+                  onChange={(e) => setEditForm((current) => ({ ...current, comments: Number(e.target.value) }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="video-watch-time">Watch Time (seconds)</Label>
+                <Input
+                  id="video-watch-time"
+                  type="number"
+                  min={0}
+                  value={editForm.watchTimeSeconds}
+                  onChange={(e) => setEditForm((current) => ({ ...current, watchTimeSeconds: Number(e.target.value) }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="video-engagement-rate">Engagement Rate</Label>
+                <Input
+                  id="video-engagement-rate"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={editForm.engagementRate}
+                  onChange={(e) => setEditForm((current) => ({ ...current, engagementRate: Number(e.target.value) }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="video-sync-status">Sync Status</Label>
+                <Select
+                  value={editForm.syncStatus}
+                  onValueChange={(value) =>
+                    setEditForm((current) => ({ ...current, syncStatus: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="idle">Idle</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="syncing">Syncing</SelectItem>
+                    <SelectItem value="success">Success</SelectItem>
+                    <SelectItem value="error">Error</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 flex items-center justify-between rounded-md border p-3 sm:col-span-2">
+                <div>
+                  <Label>Manual Override</Label>
+                  <p className="text-[10px] text-muted-foreground">Mark this snapshot as admin-owned and keep the current values on the dashboard.</p>
+                </div>
+                <Switch
+                  checked={editForm.manualOverride}
+                  onCheckedChange={(checked) => setEditForm((current) => ({ ...current, manualOverride: Boolean(checked) }))}
+                />
               </div>
             </div>
           </div>
