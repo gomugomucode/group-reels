@@ -131,7 +131,7 @@ export function parseUrl(url: string): ParsedUrl {
 
   // LinkedIn
   if (hostname === "linkedin.com") {
-    result.platform = "other"; // LinkedIn is not explicitly in Platform enum except as "other" but we can map it if we want.
+    result.platform = "linkedin";
     const postMatch = pathname.match(/\/posts\/.*-([0-9]+)-/);
     const activityMatch = pathname.match(/\/feed\/update\/urn:li:activity:([0-9]+)/);
     

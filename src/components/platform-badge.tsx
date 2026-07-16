@@ -12,6 +12,7 @@ const PLATFORM_CLASSES: Record<Platform, string> = {
   instagram: "border-transparent bg-chart-4/15 text-chart-4",
   facebook: "border-transparent bg-chart-2/15 text-chart-2",
   vimeo: "border-transparent bg-primary/15 text-primary",
+  linkedin: "border-transparent bg-blue-600/15 text-blue-600",
   other: "border-transparent bg-muted text-muted-foreground",
 };
 

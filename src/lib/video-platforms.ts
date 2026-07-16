@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 
-export type Platform = Database["public"]["Enums"]["platform_type"];
+export type Platform = Database["public"]["Enums"]["platform_type"] | "linkedin";
 export type LinkStatus = Database["public"]["Enums"]["link_status"];
 
 export const PLATFORMS: Platform[] = [
@@ -10,6 +10,7 @@ export const PLATFORMS: Platform[] = [
   "instagram",
   "facebook",
   "vimeo",
+  "linkedin",
   "other",
 ];
 
@@ -19,6 +20,7 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
   instagram: "Instagram",
   facebook: "Facebook",
   vimeo: "Vimeo",
+  linkedin: "LinkedIn",
   other: "Other",
 };
 
@@ -29,6 +31,7 @@ export const PLATFORM_COLOR_VAR: Record<Platform, string> = {
   instagram: "var(--color-chart-4)",
   facebook: "var(--color-chart-2)",
   vimeo: "var(--color-primary)",
+  linkedin: "var(--color-chart-5)",
   other: "var(--color-muted-foreground)",
 };
 

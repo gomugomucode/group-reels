@@ -98,7 +98,10 @@ SELECT
   c.group_id,
   c.title,
   c.url,
-  c.platform_id::public.platform_type AS platform,
+  CASE 
+    WHEN c.platform_id IN ('youtube', 'facebook', 'instagram', 'tiktok', 'vimeo', 'other') THEN c.platform_id::public.platform_type
+    ELSE 'other'::public.platform_type
+  END AS platform,
   c.status::public.link_status AS status,
   c.created_at,
   c.updated_at,
@@ -395,7 +398,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE TRIGGER update_legacy_analytics ON public.content_metrics
+CREATE TRIGGER update_legacy_analytics
   AFTER INSERT OR UPDATE ON public.content_metrics
   FOR EACH ROW EXECUTE FUNCTION public.update_legacy_analytics_table();
 
@@ -434,6 +437,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE TRIGGER update_legacy_analytics_delete ON public.content
+CREATE TRIGGER update_legacy_analytics_delete
   AFTER DELETE ON public.content
   FOR EACH ROW EXECUTE FUNCTION public.update_legacy_analytics_table_on_content_delete();
