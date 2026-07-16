@@ -1,4 +1,4 @@
-import { Youtube, Music2, Instagram, Facebook, Video, Globe } from "lucide-react";
+import { Youtube, Music2, Instagram, Facebook, Video, Globe, Linkedin } from "lucide-react";
 import type { Platform } from "@/lib/video-platforms";
 
 interface VideoThumbnailProps {
@@ -14,8 +14,9 @@ const PLATFORM_ICONS = {
   instagram: Instagram,
   facebook: Facebook,
   vimeo: Video,
+  linkedin: Linkedin,
   other: Globe,
-};
+} satisfies Record<Platform, typeof Globe>;
 
 const PLATFORM_COLORS = {
   youtube: "text-red-500 bg-red-500/10",
@@ -23,8 +24,9 @@ const PLATFORM_COLORS = {
   instagram: "text-pink-500 bg-pink-500/10",
   facebook: "text-blue-600 bg-blue-500/10",
   vimeo: "text-sky-400 bg-sky-500/10",
+  linkedin: "text-cyan-500 bg-cyan-500/10",
   other: "text-zinc-400 bg-zinc-500/10",
-};
+} satisfies Record<Platform, string>;
 
 export function VideoThumbnail({
   thumbnailUrl,

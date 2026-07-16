@@ -14,7 +14,7 @@ import { ActivityFeed } from "@/components/activity-feed";
 // Lazy-loaded recharts components
 const ResponsiveContainer = React.lazy(() => import("recharts").then(m => ({ default: m.ResponsiveContainer })));
 const PieChart = React.lazy(() => import("recharts").then(m => ({ default: m.PieChart })));
-const Pie = React.lazy(() => import("recharts").then(m => ({ default: m.PieChart })));
+const Pie = React.lazy(() => import("recharts").then(m => ({ default: m.Pie })));
 const Cell = React.lazy(() => import("recharts").then(m => ({ default: m.Cell })));
 const ChartTooltip = React.lazy(() => import("recharts").then(m => ({ default: m.Tooltip })));
 

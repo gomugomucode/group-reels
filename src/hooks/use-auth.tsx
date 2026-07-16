@@ -17,6 +17,9 @@ interface Profile {
   email: string;
   team_name: string | null;
   member_names: string[];
+  created_at: string;
+  suspended_at: string | null;
+  suspension_reason: string | null;
 }
 
 interface AuthContextValue {
@@ -34,7 +37,7 @@ async function loadDetails(userId: string) {
   const [{ data: profile }, { data: roles }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, username, email, team_name, member_names")
+      .select("id, username, email, team_name, member_names, created_at, suspended_at, suspension_reason")
       .eq("id", userId)
       .maybeSingle(),
     supabase.from("user_roles").select("role").eq("user_id", userId),

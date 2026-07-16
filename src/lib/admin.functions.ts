@@ -61,7 +61,18 @@ export const setUserAccountStatus = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("profiles").update({ disabled: data.disabled, updated_at: new Date().toISOString() }).eq("id", data.userId);
+    const suspendedAt = data.disabled ? new Date().toISOString() : null;
+    const suspensionReason = data.disabled ? "Admin suspended account" : null;
+
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        suspended_at: suspendedAt,
+        suspension_reason: suspensionReason,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.userId);
+
     if (error) throw new Error(error.message);
 
     return { ok: true };

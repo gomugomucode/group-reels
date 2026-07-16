@@ -10,7 +10,7 @@ import { friendlyError } from "@/lib/error-messages";
 interface RefreshButtonProps {
   videoLinkId: string;
   lastFetchedAt: string | null | undefined;
-  syncStatus: "idle" | "syncing" | "success" | "error" | "private" | "deleted";
+  syncStatus: "idle" | "pending" | "syncing" | "success" | "error" | "private" | "deleted";
   canRefresh: boolean;
   groupId: string;
   size?: "default" | "sm" | "lg" | "icon";

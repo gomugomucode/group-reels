@@ -656,7 +656,7 @@ function AdminUsersPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate">
+                        <TableCell className="text-xs text-muted-foreground max-w-120px truncate">
                           {p.team_name ?? "—"}
                         </TableCell>
                         <TableCell>
