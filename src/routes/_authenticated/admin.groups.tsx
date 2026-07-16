@@ -37,7 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { groupSchema } from "@/lib/video-platforms";
-import { useAllGroupMembers, type Group, type VideoLink } from "@/hooks/use-data";
+import { useAllGroupMembers, type Group } from "@/hooks/use-data";
 
 const SOCIALS = [
   { key: "instagram", label: "Instagram", icon: Instagram, placeholder: "https://instagram.com/yourteam" },
@@ -82,15 +82,26 @@ function AdminGroupsPage() {
         query = query.ilike("team_name", `%${search.trim()}%`);
       }
 
-      const [{ data: groupsData, error, count }, { data: videosData }] = await Promise.all([
+      const [{ data: groupsData, error, count }, { data: contentCountData }] = await Promise.all([
         query,
-        supabase.from("video_links").select("id, group_id"),
+        supabase
+          .from("content")
+          .select("group_id")
+          .eq("content_type", "video")
+          .is("deleted_at", null),
       ]);
       if (error) throw error;
 
+      // Build a Map<group_id, count> for O(1) lookup
+      const videoCountMap = new Map<string, number>();
+      (contentCountData ?? []).forEach((row: { group_id: string | null }) => {
+        if (!row.group_id) return;
+        videoCountMap.set(row.group_id, (videoCountMap.get(row.group_id) ?? 0) + 1);
+      });
+
       return {
         groups: (groupsData ?? []) as Group[],
-        videos: (videosData ?? []) as VideoLink[],
+        videoCountMap,
         totalCount: count ?? 0,
       };
     },
@@ -99,7 +110,7 @@ function AdminGroupsPage() {
   const { data: allGroupMembers = [] } = useAllGroupMembers();
 
   const groups = data?.groups ?? [];
-  const videos = data?.videos ?? [];
+  const videoCountMap = data?.videoCountMap ?? new Map<string, number>();
   const totalPages = Math.max(1, Math.ceil((data?.totalCount ?? 0) / pageSize));
 
   const openEditor = (group: Group) => {
@@ -233,7 +244,7 @@ function AdminGroupsPage() {
                   </TableRow>
                 ) : (
                   groups.map((g) => {
-                    const count = videos.filter((v) => v.group_id === g.id).length;
+                    const count = videoCountMap.get(g.id) ?? 0;
                     return (
                       <TableRow key={g.id}>
                         <TableCell className="font-medium">{g.team_name}</TableCell>

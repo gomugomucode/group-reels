@@ -23,6 +23,7 @@ import {
   useMyMemberships,
   usePendingInvitations,
   useGroupMembers,
+  useGroupMetricsHistory,
 } from "@/hooks/use-data";
 import { StatCard } from "@/components/stat-card";
 import { VideoLinkDialog } from "@/components/video-link-dialog";
@@ -80,6 +81,7 @@ function DashboardPage() {
 
   const { data: videos = [], isLoading: videosLoading } = useVideoLinks(activeGroup?.id);
   const { data: activeMembers = [] } = useGroupMembers(activeGroup?.id);
+  const { data: metricsHistory = [] } = useGroupMetricsHistory(activeGroup?.id);
 
   const acceptFn = useServerFn(acceptInvitation);
   const rejectFn = useServerFn(rejectInvitation);
@@ -125,6 +127,40 @@ function DashboardPage() {
     const acceptedCount = activeMembers.filter((m) => m.invitation_status === "accepted").length;
     return acceptedCount > 0 ? acceptedCount : activeGroup.member_names.length;
   }, [activeGroup, activeMembers]);
+
+  /** Compute today's view growth % from content_metrics_history */
+  const todaysGrowth = useMemo(() => {
+    if (metricsHistory.length === 0) return null;
+    const oneDayAgoMs = Date.now() - 24 * 60 * 60 * 1000;
+
+    // Group history entries by video id
+    const byVideo: Record<string, typeof metricsHistory> = {};
+    metricsHistory.forEach((h: any) => {
+      const key = h.video_link_id as string;
+      if (!byVideo[key]) byVideo[key] = [];
+      byVideo[key].push(h);
+    });
+
+    let totalLatest = 0;
+    let totalBaseline = 0;
+
+    Object.values(byVideo).forEach((entries) => {
+      const sorted = [...entries].sort(
+        (a: any, b: any) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime(),
+      );
+      if (sorted.length === 0) return;
+      const latest = sorted[sorted.length - 1];
+      const baseline =
+        sorted.find((e: any) => new Date(e.recorded_at).getTime() >= oneDayAgoMs) || sorted[0];
+      totalLatest += latest.views ?? 0;
+      totalBaseline += baseline.views ?? 0;
+    });
+
+    if (totalBaseline === 0) return null;
+    const pct = ((totalLatest - totalBaseline) / totalBaseline) * 100;
+    const sign = pct >= 0 ? "+" : "";
+    return `${sign}${pct.toFixed(1)}%`;
+  }, [metricsHistory]);
 
   const isLoading = ownedLoading || membershipsLoading || invitesLoading || videosLoading;
 
@@ -264,7 +300,7 @@ function DashboardPage() {
             />
             <StatCard
               label="Today's Growth"
-              value="+0%"
+              value={todaysGrowth ?? "+0%"}
               icon={<TrendingUp className="size-4 text-success" />}
             />
           </div>

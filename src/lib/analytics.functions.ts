@@ -60,6 +60,34 @@ async function assertAdmin(supabase: any, userId: string) {
   }
 }
 
+function mapContentToVideoLink(row: any): any {
+  const metrics = Array.isArray(row.metrics) ? row.metrics[0] : row.metrics;
+
+  return {
+    id: row.id,
+    group_id: row.group_id ?? "",
+    title: row.title,
+    url: row.url,
+    platform: row.platform_id,
+    status: row.status,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    created_by: row.user_id,
+    youtube_video_id: row.external_id,
+    thumbnail_url: row.thumbnail_url,
+    channel_name: null,
+    published_at: row.published_at,
+    duration_seconds: row.duration_seconds,
+    last_view_count: metrics?.views ?? 0,
+    last_like_count: metrics?.likes ?? 0,
+    last_comment_count: metrics?.comments ?? 0,
+    last_fetched_at: metrics?.last_fetched_at ?? null,
+    last_synced: metrics?.last_synced ?? null,
+    sync_status: metrics?.sync_status ?? "idle",
+    api_error: metrics?.api_error ?? null,
+  };
+}
+
 /** Shared server-side sync executor function */
 async function executeSyncVideoAnalytics(
   supabaseAdmin: any,
@@ -67,13 +95,16 @@ async function executeSyncVideoAnalytics(
   force: boolean
 ): Promise<{ ok: boolean; video?: any; skipped?: boolean; reason?: string; error?: string }> {
   // Fetch the video link details
-  const { data: video, error: fetchErr } = await supabaseAdmin
-    .from("video_links")
-    .select("*")
+  const { data: row, error: fetchErr } = await supabaseAdmin
+    .from("content")
+    .select("*, metrics:content_metrics(*)")
     .eq("id", videoLinkId)
+    .is("deleted_at", null)
     .maybeSingle();
 
-  if (fetchErr || !video) throw new Error("Video link not found");
+  if (fetchErr || !row) throw new Error("Video link not found");
+
+  const video = mapContentToVideoLink(row);
 
   if (video.platform !== "youtube") {
     throw new Error("Only YouTube videos are currently supported for analytics sync");
@@ -92,14 +123,17 @@ async function executeSyncVideoAnalytics(
   if (!videoId) {
     videoId = extractYouTubeVideoId(video.url);
     if (!videoId) {
-      await supabaseAdmin
-        .from("video_links")
-        .update({
-          sync_status: "error",
-          status: "invalid",
-          api_error: "Invalid or unsupported YouTube URL structure",
-        })
-        .eq("id", video.id);
+      await Promise.all([
+        supabaseAdmin.from("content").update({ status: "invalid" }).eq("id", video.id),
+        supabaseAdmin
+          .from("content_metrics")
+          .update({
+            sync_status: "error",
+            api_error: "Invalid or unsupported YouTube URL structure",
+            last_fetched_at: new Date().toISOString(),
+          })
+          .eq("content_id", video.id),
+      ]);
       throw new Error("Invalid YouTube URL");
     }
   }
@@ -107,20 +141,21 @@ async function executeSyncVideoAnalytics(
   const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) {
     await supabaseAdmin
-      .from("video_links")
+      .from("content_metrics")
       .update({
         sync_status: "error",
         api_error: "YouTube Data API Key is not configured on the server",
+        last_fetched_at: new Date().toISOString(),
       })
-      .eq("id", video.id);
+      .eq("content_id", video.id);
     throw new Error("YouTube API Key is missing on the server configuration");
   }
 
   // Mark as syncing in database
   await supabaseAdmin
-    .from("video_links")
+    .from("content_metrics")
     .update({ sync_status: "syncing" })
-    .eq("id", video.id);
+    .eq("content_id", video.id);
 
   try {
     const apiUrl = buildYouTubeApiUrl(videoId, apiKey);
@@ -132,13 +167,13 @@ async function executeSyncVideoAnalytics(
       const syncStatus = httpStatusToSyncStatus(res.status, statusText);
 
       await supabaseAdmin
-        .from("video_links")
+        .from("content_metrics")
         .update({
-          sync_status: syncStatus as any,
+          sync_status: (syncStatus === "deleted" || syncStatus === "error" ? "error" : "pending") as any,
           api_error: statusText,
           last_fetched_at: new Date().toISOString(),
         })
-        .eq("id", video.id);
+        .eq("content_id", video.id);
 
       return { ok: false, error: statusText };
     }
@@ -146,15 +181,17 @@ async function executeSyncVideoAnalytics(
     const json = await res.json();
     if (!json.items || json.items.length === 0) {
       // Video might be deleted, private, or invalid ID
-      await supabaseAdmin
-        .from("video_links")
-        .update({
-          sync_status: "deleted",
-          status: "invalid",
-          api_error: "Video not found (might be private or deleted)",
-          last_fetched_at: new Date().toISOString(),
-        })
-        .eq("id", video.id);
+      await Promise.all([
+        supabaseAdmin.from("content").update({ status: "invalid" }).eq("id", video.id),
+        supabaseAdmin
+          .from("content_metrics")
+          .update({
+            sync_status: "error",
+            api_error: "Video not found (might be private or deleted)",
+            last_fetched_at: new Date().toISOString(),
+          })
+          .eq("content_id", video.id),
+      ]);
 
       return { ok: false, error: "Video not found in YouTube Data API" };
     }
@@ -165,37 +202,50 @@ async function executeSyncVideoAnalytics(
     }
 
     const now = new Date().toISOString();
-    const updatedFields = {
-      youtube_video_id: videoId,
-      thumbnail_url: parsedStats.thumbnailUrl,
-      channel_name: parsedStats.channelName,
-      published_at: parsedStats.publishedAt,
-      duration_seconds: parsedStats.durationSeconds,
-      last_view_count: parsedStats.viewCount,
-      last_like_count: parsedStats.likeCount,
-      last_comment_count: parsedStats.commentCount,
-      last_fetched_at: now,
-      last_synced: now,
-      sync_status: "success" as const,
-      status: "valid" as const, // Automatically confirm valid since YouTube API confirmed it
-      api_error: null,
-    };
 
-    // Update video_links
-    const { data: updatedVideo, error: updateErr } = await supabaseAdmin
-      .from("video_links")
-      .update(updatedFields)
-      .eq("id", video.id)
-      .select()
-      .single();
+    const [contentRes, metricsRes] = await Promise.all([
+      supabaseAdmin
+        .from("content")
+        .update({
+          thumbnail_url: parsedStats.thumbnailUrl,
+          published_at: parsedStats.publishedAt,
+          duration_seconds: parsedStats.durationSeconds,
+          status: "valid" as const,
+          external_id: videoId,
+          updated_at: now,
+        })
+        .eq("id", video.id)
+        .select()
+        .single(),
+      supabaseAdmin
+        .from("content_metrics")
+        .update({
+          views: parsedStats.viewCount,
+          likes: parsedStats.likeCount,
+          comments: parsedStats.commentCount,
+          last_fetched_at: now,
+          last_synced: now,
+          sync_status: "success" as const,
+          api_error: null,
+        })
+        .eq("content_id", video.id)
+        .select()
+        .single(),
+    ]);
 
-    if (updateErr) throw updateErr;
+    if (contentRes.error) throw contentRes.error;
+    if (metricsRes.error) throw metricsRes.error;
+
+    const updatedVideo = mapContentToVideoLink({
+      ...contentRes.data,
+      metrics: metricsRes.data,
+    });
 
     // Add a snapshot record to historical metrics table
     const { error: historyErr } = await supabaseAdmin
-      .from("video_metrics_history")
+      .from("content_metrics_history")
       .insert({
-        video_link_id: video.id,
+        content_id: video.id,
         views: parsedStats.viewCount,
         likes: parsedStats.likeCount,
         comments: parsedStats.commentCount,
@@ -210,13 +260,13 @@ async function executeSyncVideoAnalytics(
   } catch (e: any) {
     const errMsg = e.message || "Unknown error occurred during sync";
     await supabaseAdmin
-      .from("video_links")
+      .from("content_metrics")
       .update({
         sync_status: "error",
         api_error: errMsg,
         last_fetched_at: new Date().toISOString(),
       })
-      .eq("id", video.id);
+      .eq("content_id", video.id);
 
     return { ok: false, error: errMsg };
   }
@@ -234,9 +284,10 @@ export const syncVideoAnalytics = createServerFn({ method: "POST" })
 
     // Fetch the video link details to confirm access
     const { data: video, error: fetchErr } = await supabaseAdmin
-      .from("video_links")
+      .from("content")
       .select("group_id")
       .eq("id", data.videoLinkId)
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (fetchErr || !video) throw new Error("Video link not found");
@@ -262,10 +313,11 @@ export const syncGroupAnalytics = createServerFn({ method: "POST" })
 
     // Fetch all YouTube video links in the group
     const { data: videos, error } = await supabaseAdmin
-      .from("video_links")
+      .from("content")
       .select("id")
       .eq("group_id", data.groupId)
-      .eq("platform", "youtube");
+      .eq("platform_id", "youtube")
+      .is("deleted_at", null);
 
     if (error) throw error;
     if (!videos || videos.length === 0) return { ok: true, processed: 0 };
@@ -303,9 +355,10 @@ export const triggerFullSync = createServerFn({ method: "POST" })
 
     // Fetch all YouTube video links
     const { data: videos, error } = await supabaseAdmin
-      .from("video_links")
+      .from("content")
       .select("id")
-      .eq("platform", "youtube");
+      .eq("platform_id", "youtube")
+      .is("deleted_at", null);
 
     if (error) throw error;
     if (!videos || videos.length === 0) return { ok: true, processed: 0 };
@@ -375,22 +428,25 @@ export const getAnalyticsSyncStatus = createServerFn({ method: "GET" })
 
     if (logsErr) throw logsErr;
 
-    // Get simple counts of videos
+    // Get simple counts of videos from base tables
     const { count: totalYoutube } = await supabaseAdmin
-      .from("video_links")
+      .from("content")
       .select("*", { count: "exact", head: true })
-      .eq("platform", "youtube");
+      .eq("platform_id", "youtube")
+      .is("deleted_at", null);
 
     const { count: syncedYoutube } = await supabaseAdmin
-      .from("video_links")
-      .select("*", { count: "exact", head: true })
-      .eq("platform", "youtube")
+      .from("content_metrics")
+      .select("content!inner(*)", { count: "exact", head: true })
+      .eq("content.platform_id", "youtube")
+      .is("content.deleted_at", null)
       .eq("sync_status", "success");
 
     const { count: failedYoutube } = await supabaseAdmin
-      .from("video_links")
-      .select("*", { count: "exact", head: true })
-      .eq("platform", "youtube")
+      .from("content_metrics")
+      .select("content!inner(*)", { count: "exact", head: true })
+      .eq("content.platform_id", "youtube")
+      .is("content.deleted_at", null)
       .eq("sync_status", "error");
 
     const apiKeyConfigured = !!process.env.YOUTUBE_API_KEY;
