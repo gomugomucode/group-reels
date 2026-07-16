@@ -14,6 +14,7 @@ import {
   Eye,
   ThumbsUp,
   TrendingUp,
+  BarChart3,
 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { CreatorInsights } from "@/components/creator-insights";
@@ -49,7 +50,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { acceptInvitation, rejectInvitation } from "@/lib/group-collaboration.functions";
-import { VideoLink } from "@/types";
+import { type VideoLink } from "@/hooks/use-data";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,

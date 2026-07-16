@@ -40,7 +40,7 @@ export function ContentDetailDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const qc = useQueryClient();
-  const syncFn = useServerFn(syncVideoLink);
+  const syncFn = useServerFn(syncVideoAnalytics);
   const { data: historyData = [] } = useGroupMetricsHistory(video?.group_id || "");
 
   const chartData = useMemo(() => {
