@@ -94,6 +94,7 @@ import { VideoThumbnail } from "@/components/video-thumbnail";
 import { VideoStatsBadge } from "@/components/video-stats-badge";
 import { SyncStatusBadge } from "@/components/sync-status-badge";
 import { RefreshButton } from "@/components/refresh-button";
+import { CreatorInsights } from "@/components/creator-insights";
 import { formatCount } from "@/lib/youtube";
 
 export const Route = createFileRoute("/_authenticated/groups/$id")({
@@ -681,128 +682,10 @@ function GroupDetailPage() {
             )}
           </div>
 
-          {/* ── Real Platform Stats Row ─────────────────────── */}
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <StatCard
-              label="Total Views"
-              value={formatCount(analyticsSummary?.total_views ?? 0)}
-              icon={<Eye className="size-4" />}
-              accent
-            />
-            <StatCard
-              label="Total Likes"
-              value={formatCount(analyticsSummary?.total_likes ?? 0)}
-              icon={<Heart className="size-4" />}
-            />
-            <StatCard
-              label="Total Comments"
-              value={formatCount(analyticsSummary?.total_comments ?? 0)}
-              icon={<MessageSquare className="size-4" />}
-            />
+          {/* ── Creator Insights Module ─────────────────────── */}
+          <div className="mt-6">
+            <CreatorInsights videos={videos} metricsHistory={historyData} />
           </div>
-
-          {/* ── Extended Highlight Highlights Grid ──────────── */}
-          {(topVideo || newestVideo) && (
-            <div className="mt-6 grid gap-6 sm:grid-cols-2">
-              {topVideo && (
-                <div className="rounded-2xl border border-border bg-card p-5 flex flex-col justify-between">
-                  <div>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-semibold text-warning border border-warning/20">
-                      <Sparkles className="size-3" /> Top Performing Video
-                    </span>
-                    <h3 className="mt-3 font-semibold line-clamp-1">{topVideo.title || "Untitled Video"}</h3>
-                    <p className="text-xs text-muted-foreground mt-1 truncate">
-                      Channel: {topVideo.channel_name || "Unknown"}
-                    </p>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Eye className="size-3" /> {formatCount(topVideo.last_view_count)} views
-                    </span>
-                    <a
-                      href={topVideo.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs text-primary font-medium hover:underline flex items-center gap-0.5"
-                    >
-                      Watch <ExternalLink className="size-3" />
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              {newestVideo && (
-                <div className="rounded-2xl border border-border bg-card p-5 flex flex-col justify-between">
-                  <div>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-semibold text-primary border border-primary/20">
-                      <Calendar className="size-3" /> Newest Upload
-                    </span>
-                    <h3 className="mt-3 font-semibold line-clamp-1">{newestVideo.title || "Untitled Video"}</h3>
-                    <p className="text-xs text-muted-foreground mt-1 truncate">
-                      Uploaded by: {newestVideo.channel_name || "Unknown"}
-                    </p>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-                    <span className="text-xs text-muted-foreground">
-                      Published {newestVideo.published_at ? new Date(newestVideo.published_at).toLocaleDateString() : "unknown"}
-                    </span>
-                    <a
-                      href={newestVideo.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs text-primary font-medium hover:underline flex items-center gap-0.5"
-                    >
-                      Watch <ExternalLink className="size-3" />
-                    </a>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Growth Chart ────────────────────────────────── */}
-          {growthChartData.length > 0 && (
-            <div className="mt-6 rounded-2xl border border-border bg-card p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-lg flex items-center gap-2">
-                    <TrendingUp className="size-4 text-primary" /> Views Growth
-                  </h3>
-                  <p className="text-xs text-muted-foreground">Cumulative views over time across group videos</p>
-                </div>
-              </div>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={growthChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                    <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={11} />
-                    <YAxis
-                      stroke="var(--color-muted-foreground)"
-                      fontSize={11}
-                      tickFormatter={(v) => formatCount(v)}
-                    />
-                    <ChartTooltip
-                      contentStyle={{
-                        background: "var(--color-popover)",
-                        border: "1px solid var(--color-border)",
-                        borderRadius: 12,
-                        color: "var(--color-popover-foreground)",
-                      }}
-                      formatter={(v: any) => [`${v.toLocaleString()} views`, "Total Views"]}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="views"
-                      stroke="var(--color-primary)"
-                      strokeWidth={2.5}
-                      dot={{ r: 4 }}
-                      activeDot={{ r: 6 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
 
           {/* ── Team Members Panel ────────────────────────────── */}
           <div className="mt-6 rounded-2xl border border-border bg-card">

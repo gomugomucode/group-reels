@@ -16,6 +16,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
+import { CreatorInsights } from "@/components/creator-insights";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useMyGroup,
@@ -280,30 +281,8 @@ function DashboardPage() {
         </div>
       ) : (
         <>
-          {/* Stat cards */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Total Content"
-              value={videos.length}
-              icon={<Video className="size-4" />}
-              accent
-            />
-            <StatCard
-              label="Total Views"
-              value={videos.reduce((acc, v) => acc + (v.last_view_count || 0), 0).toLocaleString()}
-              icon={<Eye className="size-4" />}
-            />
-            <StatCard
-              label="Total Likes"
-              value={videos.reduce((acc, v) => acc + (v.last_like_count || 0), 0).toLocaleString()}
-              icon={<ThumbsUp className="size-4" />}
-            />
-            <StatCard
-              label="Today's Growth"
-              value={todaysGrowth ?? "+0%"}
-              icon={<TrendingUp className="size-4 text-success" />}
-            />
-          </div>
+          {/* Creator Insights Module */}
+          <CreatorInsights videos={videos} metricsHistory={metricsHistory} />
 
           {/* Content library */}
           <div className="mt-8 rounded-2xl border border-border bg-card">
