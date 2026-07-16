@@ -114,17 +114,9 @@ function AddContentPage() {
         status,
       };
 
-      const { data, error } = await supabase
-        .from("content")
-        .insert(payload)
-        .select("id")
-        .single();
+      const { data: insertedId, error } = await supabase.rpc("insert_content_with_metrics", payload);
       if (error) throw error;
-
-      const { error: metricsError } = await supabase
-        .from("content_metrics")
-        .insert({ content_id: data.id, sync_status: "pending" });
-      if (metricsError) throw metricsError;
+      if (!insertedId) throw new Error("Content creation did not return an ID.");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["video-links"] });

@@ -309,7 +309,7 @@ export function useAllGroupMembers() {
       const { data, error } = await supabase
         .from("group_members")
         .select("*, group:groups(team_name)")
-        .order("invited_at", { ascending: false });
+        .order("joined_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Array<GroupMember & { group?: { team_name: string | null } }>;
     },
@@ -328,7 +328,7 @@ export function useGroupMembers(groupId: string | undefined) {
         .select("*")
         .eq("group_id", groupId!)
         .order("role", { ascending: false })
-        .order("invited_at", { ascending: true });
+        .order("joined_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as GroupMember[];
     },

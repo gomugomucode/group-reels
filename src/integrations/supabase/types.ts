@@ -263,8 +263,9 @@ export type Database = {
           email: string
           role: Database["public"]["Enums"]["member_role"]
           invitation_status: Database["public"]["Enums"]["invite_status"]
-          invited_at: string
-          accepted_at: string | null
+          joined_at: string | null
+          created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
@@ -273,8 +274,9 @@ export type Database = {
           email: string
           role?: Database["public"]["Enums"]["member_role"]
           invitation_status?: Database["public"]["Enums"]["invite_status"]
-          invited_at?: string
-          accepted_at?: string | null
+          joined_at?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
@@ -283,8 +285,9 @@ export type Database = {
           email?: string
           role?: Database["public"]["Enums"]["member_role"]
           invitation_status?: Database["public"]["Enums"]["invite_status"]
-          invited_at?: string
-          accepted_at?: string | null
+          joined_at?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Relationships: [
           {

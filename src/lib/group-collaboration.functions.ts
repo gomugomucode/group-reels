@@ -134,7 +134,7 @@ export const resendInvitation = createServerFn({ method: "POST" })
 
     const { error: updateErr } = await supabaseAdmin
       .from("group_members")
-      .update({ invited_at: new Date().toISOString() })
+      .update({ joined_at: new Date().toISOString() })
       .eq("id", data.memberId);
 
     if (updateErr) throw updateErr;
@@ -178,7 +178,7 @@ export const acceptInvitation = createServerFn({ method: "POST" })
       .update({
         user_id: userId,
         invitation_status: "accepted",
-        accepted_at: new Date().toISOString(),
+        joined_at: new Date().toISOString(),
       })
       .eq("id", data.memberId);
 
