@@ -925,7 +925,10 @@ function GroupDetailPage() {
                     />
 
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-foreground truncate">{v.title || "Untitled content"}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-foreground truncate">{v.title || "Untitled Content"}</p>
+                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-0.5">{v.platform}</span>
+                      </div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-muted-foreground">
                         {v.channel_name && <span>{v.channel_name}</span>}
                         {v.channel_name && <span>•</span>}
@@ -933,11 +936,12 @@ function GroupDetailPage() {
                           href={v.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 hover:text-foreground truncate"
+                          className="inline-flex items-center gap-1 hover:text-foreground truncate max-w-xs"
                         >
                           {v.url}
                           <ExternalLink className="size-3 shrink-0" />
                         </a>
+                        <span className="text-[10px]">Added {new Date(v.created_at).toLocaleDateString()}</span>
                       </div>
                       
                       {/* Metric summary counters */}

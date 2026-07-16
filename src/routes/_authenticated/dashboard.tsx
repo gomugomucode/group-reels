@@ -373,12 +373,16 @@ function DashboardPage() {
                   <div key={v.id} className="flex flex-wrap items-center gap-4 p-4 hover:bg-secondary/20 transition-colors">
                     <VideoThumbnail thumbnailUrl={v.thumbnail_url} platform={v.platform} title={v.title} />
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-foreground truncate">{v.title || "Untitled content"}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-foreground truncate">{v.title || "Untitled Content"}</p>
+                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-0.5">{v.platform}</span>
+                      </div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-muted-foreground">
                         {v.channel_name && <span>{v.channel_name} • </span>}
-                        <a href={v.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground truncate">
+                        <a href={v.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground truncate max-w-xs">
                           {v.url} <ExternalLink className="size-3 shrink-0" />
                         </a>
+                        <span className="text-[10px]">Added {new Date(v.created_at).toLocaleDateString()}</span>
                       </div>
                       <VideoStatsBadge views={v.last_view_count} likes={v.last_like_count} comments={v.last_comment_count} syncStatus={v.sync_status} apiError={v.api_error} className="mt-2" />
                     </div>
@@ -404,7 +408,11 @@ function DashboardPage() {
                           onClick={() => {
                             if (confirm("Delete this content?")) {
                               supabase.from("content").update({ deleted_at: new Date().toISOString() }).eq("id", v.id).then(() => {
-                                qc.invalidateQueries();
+                                qc.invalidateQueries({ queryKey: ["video-links"] });
+                                qc.invalidateQueries({ queryKey: ["video-links-all"] });
+                                qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+                                qc.invalidateQueries({ queryKey: ["admin-video-links-list"] });
+                                qc.invalidateQueries({ queryKey: ["group-analytics-summary"] });
                               });
                             }
                           }}

@@ -89,7 +89,11 @@ export function VideoLinkDialog({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["video-links", groupId] });
       qc.invalidateQueries({ queryKey: ["video-links-all"] });
-      toast.success("Content updated successfully");
+      qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+      qc.invalidateQueries({ queryKey: ["admin-video-links-list"] });
+      qc.invalidateQueries({ queryKey: ["admin-analytics-summary"] });
+      qc.invalidateQueries({ queryKey: ["group-analytics-summary", groupId] });
+      toast.success(editing ? "Content updated successfully" : "Content added successfully");
       onOpenChange(false);
     },
     onError: () => toast.error("We couldn't save your content. Please try again."),

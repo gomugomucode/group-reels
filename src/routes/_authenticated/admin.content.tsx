@@ -249,6 +249,8 @@ function AdminVideoLinksPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-video-links-list"] });
       qc.invalidateQueries({ queryKey: ["video-links-all"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+      qc.invalidateQueries({ queryKey: ["video-links"] });
       toast.success("Sync operation started successfully");
     },
     onError: (e: Error) => toast.error(e.message),

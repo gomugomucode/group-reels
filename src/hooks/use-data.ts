@@ -30,9 +30,9 @@ export function mapContentToVideoLink(row: ContentWithMetrics): VideoLink {
     channel_name: null,
     published_at: row.published_at,
     duration_seconds: row.duration_seconds,
-    last_view_count: metrics?.views ?? 0,
-    last_like_count: metrics?.likes ?? 0,
-    last_comment_count: metrics?.comments ?? 0,
+    last_view_count: metrics?.views ?? null,
+    last_like_count: metrics?.likes ?? null,
+    last_comment_count: metrics?.comments ?? null,
     last_fetched_at: metrics?.last_fetched_at ?? null,
     last_synced: metrics?.last_synced ?? null,
     sync_status: (metrics?.sync_status ?? "idle") as VideoLink["sync_status"],
@@ -608,6 +608,7 @@ export function useInvalidateAnalytics() {
     queryClient.invalidateQueries({ queryKey: ["video-links"] });
     queryClient.invalidateQueries({ queryKey: ["video-links-all"] });
     queryClient.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-video-links-list"] });
     queryClient.invalidateQueries({ queryKey: ["group-analytics-summary"] });
     queryClient.invalidateQueries({ queryKey: ["admin-analytics-summary"] });
     queryClient.invalidateQueries({ queryKey: ["top-videos"] });

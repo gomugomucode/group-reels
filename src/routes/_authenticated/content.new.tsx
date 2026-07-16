@@ -64,6 +64,9 @@ function AddContentPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["video-links"] });
       qc.invalidateQueries({ queryKey: ["video-links-all"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard-data"] });
+      qc.invalidateQueries({ queryKey: ["admin-video-links-list"] });
+      qc.invalidateQueries({ queryKey: ["admin-analytics-summary"] });
       toast.success("Content added successfully");
       navigate({ to: "/dashboard" });
     },

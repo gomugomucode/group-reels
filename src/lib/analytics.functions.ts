@@ -78,9 +78,9 @@ function mapContentToVideoLink(row: any): any {
     channel_name: null,
     published_at: row.published_at,
     duration_seconds: row.duration_seconds,
-    last_view_count: metrics?.views ?? 0,
-    last_like_count: metrics?.likes ?? 0,
-    last_comment_count: metrics?.comments ?? 0,
+    last_view_count: metrics?.views ?? null,
+    last_like_count: metrics?.likes ?? null,
+    last_comment_count: metrics?.comments ?? null,
     last_fetched_at: metrics?.last_fetched_at ?? null,
     last_synced: metrics?.last_synced ?? null,
     sync_status: metrics?.sync_status ?? "idle",
@@ -306,7 +306,7 @@ export const syncVideoAnalytics = createServerFn({ method: "POST" })
       .is("deleted_at", null)
       .maybeSingle();
 
-    if (fetchErr || !video) throw new Error("Video link not found");
+    if (fetchErr || !video || !video.group_id) throw new Error("Video link not found or missing group");
 
     // Verify caller permission (member, owner, or admin)
     await assertGroupAccess(supabaseAdmin, video.group_id, userId);

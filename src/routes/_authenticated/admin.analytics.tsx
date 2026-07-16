@@ -20,7 +20,6 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +35,7 @@ import {
   getAnalyticsSyncStatus,
   triggerFullSync,
 } from "@/lib/analytics.functions";
+import { useAdminAnalyticsSummary } from "@/hooks/use-data";
 
 export const Route = createFileRoute("/_authenticated/admin/analytics")({
   component: AnalyticsSettingsPage,
@@ -49,21 +49,7 @@ function AnalyticsSettingsPage() {
   
   const [syncing, setSyncing] = useState(false);
 
-  const { data: analyticsData, isLoading: analyticsLoading } = useQuery({
-    queryKey: ["admin-analytics-overview"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("group_analytics_summary").select("*");
-      if (error) throw error;
-      return (data ?? []) as Array<{
-        group_id: string;
-        team_name: string;
-        total_views: number;
-        total_likes: number;
-        total_comments: number;
-        video_count: number;
-      }>;
-    },
-  });
+  const { data: analyticsData, isLoading: analyticsLoading } = useAdminAnalyticsSummary();
 
   // Fetch status logs
   const { data, isLoading, refetch } = useQuery({
@@ -316,7 +302,7 @@ function AnalyticsSettingsPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    data.logs.map((log) => {
+                    data.logs.map((log: any) => {
                       const elapsed = log.completed_at
                         ? `${Math.round(
                             (new Date(log.completed_at).getTime() - new Date(log.started_at).getTime()) / 1000
