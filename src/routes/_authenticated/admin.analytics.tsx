@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { AppLayout } from "@/components/app-layout";
+import { AdminLeaderboards } from "@/components/admin-leaderboards";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -169,6 +170,7 @@ function AnalyticsSettingsPage() {
         </div>
       ) : (
         <div className="space-y-6">
+          <AdminLeaderboards />
           {/* ── System Status Overview ────────────────────── */}
           <div className="rounded-2xl border border-border bg-card p-5">
             <div className="flex items-center justify-between gap-3">

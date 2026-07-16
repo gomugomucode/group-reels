@@ -97,6 +97,11 @@ export function AppHeader() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/profile" className="cursor-pointer">
+                  My Profile
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={handleSignOut} className="text-destructive">
                 <LogOut className="mr-2 size-4" />
                 Sign out
