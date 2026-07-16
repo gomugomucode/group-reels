@@ -158,7 +158,7 @@ export function GroupForm({
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-6">
+      {/* <section className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-lg font-semibold">Social media links</h2>
         <p className="text-sm text-muted-foreground">All optional.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -176,7 +176,7 @@ export function GroupForm({
             </div>
           ))}
         </div>
-      </section>
+      </section> */}
 
       <div className="flex justify-end gap-3">
         <Button
