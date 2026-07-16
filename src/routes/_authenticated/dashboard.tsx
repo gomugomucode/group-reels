@@ -33,6 +33,7 @@ import { VideoThumbnail } from "@/components/video-thumbnail";
 import { VideoStatsBadge } from "@/components/video-stats-badge";
 import { SyncStatusBadge } from "@/components/sync-status-badge";
 import { RefreshButton } from "@/components/refresh-button";
+import { ContentDetailDialog } from "@/components/content-detail-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -48,6 +49,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { acceptInvitation, rejectInvitation } from "@/lib/group-collaboration.functions";
+import { VideoLink } from "@/types";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
@@ -57,7 +59,9 @@ function DashboardPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { user, profile, isAdmin } = useAuth();
-  const [editingLink, setEditingLink] = useState<any>(null);
+  const [editingLink, setEditingLink] = useState<VideoLink | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailVideo, setDetailVideo] = useState<VideoLink | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: ownedGroup, isLoading: ownedLoading } = useMyGroup(user?.id);
@@ -377,6 +381,9 @@ function DashboardPage() {
                             canRefresh={true}
                           />
                         )}
+                        <Button variant="ghost" size="icon" onClick={() => { setDetailVideo(v); setDetailOpen(true); }} title="View Analytics">
+                          <BarChart3 className="size-4" />
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => { setEditingLink(v); setDialogOpen(true); }}>
                           <Pencil className="size-4" />
                         </Button>
@@ -417,6 +424,13 @@ function DashboardPage() {
           editing={editingLink}
         />
       )}
+
+      {/* Content Detail Analytics */}
+      <ContentDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        video={detailVideo}
+      />
     </AppLayout>
   );
 }
