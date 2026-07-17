@@ -1,9 +1,11 @@
 import { extractYouTubeVideoId } from '@/lib/youtube';
 import { buildYouTubeApiUrl, mapYouTubeResponse } from '@/lib/youtube';
-import { VideoProvider, NormalizedMetrics, VideoMetadata, VideoMetrics } from '@/lib/analytics/types';
+import { AnalyticsProvider, AnalyticsResult } from '@/lib/analytics/types';
 
-export class YouTubeProvider implements VideoProvider {
+export class YouTubeProvider implements AnalyticsProvider {
   private apiKey: string;
+  private cache: Map<string, { result: AnalyticsResult; timestamp: number }> = new Map();
+  private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
@@ -17,11 +19,18 @@ export class YouTubeProvider implements VideoProvider {
     return extractYouTubeVideoId(url);
   }
 
-  async fetchDetails(videoId: string): Promise<{
-    metadata: VideoMetadata;
-    metrics: VideoMetrics;
-    rawResponse: any;
-  }> {
+  async fetchAnalytics(url: string): Promise<AnalyticsResult> {
+    const videoId = this.extractId(url);
+    if (!videoId) {
+      throw new Error('Unable to extract YouTube video ID from URL');
+    }
+
+    // Check cache
+    const cached = this.cache.get(videoId);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL_MS) {
+      return cached.result;
+    }
+
     const apiUrl = buildYouTubeApiUrl(videoId, this.apiKey);
     const response = await fetch(apiUrl);
     if (!response.ok) {
@@ -38,51 +47,30 @@ export class YouTubeProvider implements VideoProvider {
       throw new Error('Failed to parse YouTube response');
     }
 
-    const metadata: VideoMetadata = {
-      title: video.title,
-      thumbnailUrl: video.thumbnailUrl,
-      publishedAt: video.publishedAt,
-      durationSeconds: video.durationSeconds,
-      channelName: video.channelName,
-    };
+    // Calculate engagement rate: (likes + comments) / views * 100, avoid division by zero
+    const engagementRate =
+      video.viewCount > 0
+        ? ((video.likeCount + video.commentCount) / video.viewCount) * 100
+        : 0;
 
-    const metrics: VideoMetrics = {
+    const result: AnalyticsResult = {
       views: video.viewCount,
       likes: video.likeCount,
       comments: video.commentCount,
+      shares: 0, // YouTube API does not provide shares in video statistics
+      engagementRate: Number(engagementRate.toFixed(2)),
+      watchTime: null, // YouTube API does not provide watch time in video statistics
+      thumbnail: video.thumbnailUrl,
+      title: video.title,
+      creator: video.channelName,
+      syncedAt: new Date().toISOString(),
+      publishedAt: video.publishedAt,
+      durationSeconds: video.durationSeconds,
+      platformId: video.videoId,
     };
 
-    return {
-      metadata,
-      metrics,
-      rawResponse: data,
-    };
-  }
-
-  normalize(metadata: VideoMetadata, metrics: VideoMetrics, rawResponse: any): NormalizedMetrics {
-    return {
-      views: metrics.views,
-      likes: metrics.likes,
-      comments: metrics.comments,
-      shares: 0, // YouTube API does not provide shares in the video statistics
-      favorites: 0, // YouTube API does not provide favorites in the video statistics
-      duration: metadata.durationSeconds,
-      thumbnail: metadata.thumbnailUrl,
-      title: metadata.title,
-      publishedAt: metadata.publishedAt,
-      creator: metadata.channelName,
-      platformId: rawResponse.items?.[0]?.id || '',
-      rawResponse,
-    };
-  }
-
-  supportsRealtime(): boolean {
-    // YouTube Data API does not provide real-time metrics
-    return false;
-  }
-
-  supportsHistory(): boolean {
-    // We can get historical data by storing snapshots ourselves
-    return true;
+    // Update cache
+    this.cache.set(videoId, { result, timestamp: Date.now() });
+    return result;
   }
 }

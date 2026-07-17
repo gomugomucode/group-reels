@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { extractYouTubeVideoId, buildYouTubeApiUrl, mapYouTubeResponse, httpStatusToSyncStatus } from "./youtube";
+import { getAnalyticsProvider } from "@/lib/analytics/providers/factory";
+import { AnalyticsResult } from "@/lib/analytics/types";
 
 // Helper: Assert that the caller is a group member, group owner, or admin
 async function assertGroupAccess(supabase: any, groupId: string, userId: string) {
@@ -73,7 +74,8 @@ function mapContentToVideoLink(row: any): any {
     created_at: row.created_at,
     updated_at: row.updated_at,
     created_by: row.user_id,
-    youtube_video_id: row.external_id,
+    external_id: row.external_id,
+    youtube_video_id: row.external_id, // kept for backward compatibility
     thumbnail_url: row.thumbnail_url,
     channel_name: null,
     published_at: row.published_at,
@@ -112,21 +114,23 @@ async function executeSyncVideoAnalytics(
   const video = mapContentToVideoLink(row);
   console.log(`[SyncVideo] Fetched video details: title="${video.title}", platform="${video.platform}", url="${video.url}"`);
 
-  if (video.platform !== "youtube") {
+  // Get provider for the platform
+  const provider = getAnalyticsProvider(video.platform);
+  if (!provider) {
     const now = new Date().toISOString();
-    console.warn(`[SyncVideo] Non-YouTube platform "${video.platform}" sync not supported.`);
+    console.warn(`[SyncVideo] Platform "${video.platform}" not supported or provider not configured.`);
     await supabaseAdmin
       .from("content_metrics")
       .update({
         sync_status: "error",
-        api_error: "Platform analytics not supported without OAuth",
+        api_error: `Platform ${video.platform} not supported or missing credentials`,
         last_fetched_at: now,
       })
       .eq("content_id", video.id);
 
     return { 
       ok: true, 
-      video: { ...video, sync_status: "error", api_error: "Platform analytics not supported without OAuth" }, 
+      video: { ...video, sync_status: "error", api_error: `Platform ${video.platform} not supported or missing credentials` }, 
       skipped: true, 
       reason: "Platform not supported" 
     };
@@ -141,120 +145,83 @@ async function executeSyncVideoAnalytics(
     }
   }
 
-  // Extract YouTube ID if not present
-  let videoId = video.youtube_video_id;
-  console.log(`[SyncVideo] Current external ID: ${videoId}`);
-  if (!videoId) {
-    console.log(`[SyncVideo] Attempting to extract YouTube ID from URL: ${video.url}`);
-    videoId = extractYouTubeVideoId(video.url);
-    console.log(`[SyncVideo] Extracted ID: ${videoId}`);
-    if (!videoId) {
-      console.error(`[SyncVideo] Extraction failed. Marking status as invalid.`);
-      await Promise.all([
-        supabaseAdmin.from("content").update({ status: "invalid" }).eq("id", video.id),
-        supabaseAdmin
-          .from("content_metrics")
-          .update({
-            sync_status: "error",
-            api_error: "Invalid or unsupported YouTube URL structure",
-            last_fetched_at: new Date().toISOString(),
-          })
-          .eq("content_id", video.id),
-      ]);
-      throw new Error("Invalid YouTube URL");
-    }
-  }
-
-  // Load environment variables manually
-  const { loadEnv } = await import("@/lib/env.server");
-  loadEnv();
-
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) {
-    console.error(`[SyncVideo] YouTube API Key is missing in environment variables.`);
+  // Validate URL
+  if (!provider.validateUrl(video.url)) {
+    const now = new Date().toISOString();
+    console.error(`[SyncVideo] Invalid URL for platform ${video.platform}: ${video.url}`);
+    await supabaseAdmin
+      .from("content")
+      .update({ status: "invalid" })
+      .eq("id", video.id);
     await supabaseAdmin
       .from("content_metrics")
       .update({
         sync_status: "error",
-        api_error: "YouTube Data API Key is not configured on the server",
+        api_error: "Invalid URL for platform",
         last_fetched_at: new Date().toISOString(),
       })
       .eq("content_id", video.id);
-    throw new Error("YouTube API Key is missing on the server configuration");
+    throw new Error("Invalid URL for platform");
   }
-  console.log(`[SyncVideo] YouTube API Key loaded successfully.`);
 
-  // Mark as syncing in database
-  console.log(`[SyncVideo] Marking sync_status as "syncing"...`);
-  await supabaseAdmin
-    .from("content_metrics")
-    .update({ sync_status: "syncing" })
-    .eq("content_id", video.id);
-
-  try {
-    const apiUrl = buildYouTubeApiUrl(videoId, apiKey);
-    console.log(`[SyncVideo] Querying YouTube API for video ${videoId}...`);
-    const res = await fetch(apiUrl);
-
-    console.log(`[SyncVideo] YouTube API returned status: ${res.status}`);
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      const statusText = errorData.error?.message || `HTTP error ${res.status}`;
-      console.error(`[SyncVideo] YouTube API call failed. Message: ${statusText}`);
-      const syncStatus = httpStatusToSyncStatus(res.status, statusText);
-
+  // Extract ID from URL if not already stored
+  let externalId = video.external_id;
+  if (!externalId) {
+    const extractedId = provider.extractId(video.url);
+    if (!extractedId) {
+      const now = new Date().toISOString();
+      console.error(`[SyncVideo] Failed to extract ID from URL for platform ${video.platform}: ${video.url}`);
+      await supabaseAdmin
+        .from("content")
+        .update({ status: "invalid" })
+        .eq("id", video.id);
       await supabaseAdmin
         .from("content_metrics")
         .update({
-          sync_status: (syncStatus === "deleted" || syncStatus === "error" ? "error" : "pending") as any,
-          api_error: statusText,
-          last_fetched_at: new Date().toISOString(),
+          sync_status: "error",
+          api_error: "Failed to extract ID from URL",
+          last_fetched_at: now,
         })
         .eq("content_id", video.id);
-
-      return { ok: false, error: statusText };
+      throw new Error("Failed to extract ID from URL");
     }
+    externalId = extractedId;
+    // We will update the content record with this externalId later.
+  }
 
-    const json = await res.json();
-    console.log(`[SyncVideo] YouTube JSON Response items length: ${json.items?.length ?? 0}`);
-    if (!json.items || json.items.length === 0) {
-      console.warn(`[SyncVideo] Video not found or has privacy/deleted restrictions.`);
-      await Promise.all([
-        supabaseAdmin.from("content").update({ status: "invalid" }).eq("id", video.id),
-        supabaseAdmin
-          .from("content_metrics")
-          .update({
-            sync_status: "error",
-            api_error: "Video not found (might be private or deleted)",
-            last_fetched_at: new Date().toISOString(),
-          })
-          .eq("content_id", video.id),
-      ]);
-
-      return { ok: false, error: "Video not found in YouTube Data API" };
-    }
-
-    console.log(`[SyncVideo] Mapping response statistics...`);
-    const parsedStats = mapYouTubeResponse(json.items[0]);
-    if (!parsedStats) {
-      console.error(`[SyncVideo] Mapping response returned null.`);
-      throw new Error("Failed to map YouTube API response");
-    }
-    console.log(`[SyncVideo] Mapped statistics: Views=${parsedStats.viewCount}, Likes=${parsedStats.likeCount}, Comments=${parsedStats.commentCount}`);
-
+  // Fetch analytics using the provider
+  let analytics: AnalyticsResult;
+  try {
+    analytics = await provider.fetchAnalytics(video.url);
+  } catch (err: any) {
     const now = new Date().toISOString();
+    console.error(`[SyncVideo] Failed to fetch analytics for platform ${video.platform}:`, err);
+    await supabaseAdmin
+      .from("content_metrics")
+      .update({
+        sync_status: "error",
+        api_error: err.message ?? "Unknown error",
+        last_fetched_at: now,
+      })
+      .eq("content_id", video.id);
+    return { ok: false, error: err.message ?? "Unknown error" };
+  }
 
-    console.log(`[SyncVideo] Writing parsed metrics to database...`);
+  const now = new Date().toISOString();
+  const syncedAt = analytics.syncedAt ?? now;
+
+  // Update content and content_metrics tables
+  try {
     const [contentRes, metricsRes] = await Promise.all([
       supabaseAdmin
         .from("content")
         .update({
-          title: parsedStats.title,
-          thumbnail_url: parsedStats.thumbnailUrl,
-          published_at: parsedStats.publishedAt,
-          duration_seconds: parsedStats.durationSeconds,
+          title: analytics.title,
+          thumbnail_url: analytics.thumbnail,
+          published_at: analytics.publishedAt,
+          duration_seconds: analytics.durationSeconds,
           status: "valid" as const,
-          external_id: videoId,
+          external_id: analytics.platformId, // Update external_id if we extracted a new one
           updated_at: now,
         })
         .eq("id", video.id)
@@ -263,11 +230,18 @@ async function executeSyncVideoAnalytics(
       supabaseAdmin
         .from("content_metrics")
         .update({
-          views: parsedStats.viewCount,
-          likes: parsedStats.likeCount,
-          comments: parsedStats.commentCount,
+          views: analytics.views,
+          likes: analytics.likes,
+          comments: analytics.comments,
+          shares: analytics.shares,
+          saves: 0, // AnalyticsResult does not have favorites/saves, default to 0
+          watch_time_seconds: analytics.watchTime ?? 0,
+          engagement_rate: analytics.engagementRate,
+          followers_gained: 0, // Not provided by AnalyticsResult
+          reach: 0, // Not provided by AnalyticsResult
+          impressions: 0, // Not provided by AnalyticsResult
           last_fetched_at: now,
-          last_synced: now,
+          last_synced: syncedAt,
           sync_status: "success" as const,
           api_error: null,
         })
@@ -284,45 +258,49 @@ async function executeSyncVideoAnalytics(
       console.error(`[SyncVideo] Database error updating content_metrics:`, metricsRes.error);
       throw metricsRes.error;
     }
-    console.log(`[SyncVideo] Database update complete.`);
+
+    // Insert a snapshot into content_metrics_history
+    const { error: historyErr } = await supabaseAdmin
+      .from("content_metrics_history")
+      .insert({
+        content_id: video.id,
+        views: analytics.views,
+        likes: analytics.likes,
+        comments: analytics.comments,
+        shares: analytics.shares,
+        saves: 0,
+        watch_time_seconds: analytics.watchTime ?? 0,
+        engagement_rate: analytics.engagementRate,
+        followers_gained: 0,
+        reach: 0,
+        impressions: 0,
+        recorded_at: syncedAt,
+      });
+
+    if (historyErr) {
+      console.warn("[SyncVideo] Failed to write to metrics history:", historyErr);
+      // Not critical, we can still return success
+    }
 
     const updatedVideo = mapContentToVideoLink({
       ...contentRes.data,
       metrics: metricsRes.data,
     });
 
-    console.log(`[SyncVideo] Inserting metrics snapshot into content_metrics_history...`);
-    // Add a snapshot record to historical metrics table
-    const { error: historyErr } = await supabaseAdmin
-      .from("content_metrics_history")
-      .insert({
-        content_id: video.id,
-        views: parsedStats.viewCount,
-        likes: parsedStats.likeCount,
-        comments: parsedStats.commentCount,
-        recorded_at: now,
-      });
-
-    if (historyErr) {
-      console.error("[SyncVideo] Failed to write to metrics history:", historyErr);
-    } else {
-      console.log(`[SyncVideo] Successfully logged metrics history entry.`);
-    }
-
+    console.log(`[SyncVideo] Sync completed successfully for content_id: ${videoLinkId}`);
     return { ok: true, video: updatedVideo };
-  } catch (e: any) {
-    const errMsg = e.message || "Unknown error occurred during sync";
-    console.error(`[SyncVideo] Exception caught during sync pipeline:`, e);
+  } catch (err: any) {
+    const now = new Date().toISOString();
+    console.error(`[SyncVideo] Database error during sync:`, err);
     await supabaseAdmin
       .from("content_metrics")
       .update({
         sync_status: "error",
-        api_error: errMsg,
+        api_error: err.message ?? "Unknown error",
         last_fetched_at: new Date().toISOString(),
       })
       .eq("content_id", video.id);
-
-    return { ok: false, error: errMsg };
+    return { ok: false, error: err.message ?? "Unknown error" };
   }
 }
 
