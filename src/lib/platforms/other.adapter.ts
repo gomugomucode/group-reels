@@ -1,6 +1,6 @@
 import { AnalyticsProvider, AnalyticsResult } from '@/lib/analytics/types';
 
-export class OtherProvider implements AnalyticsProvider {
+export class OtherAdapter implements AnalyticsProvider {
   validateUrl(url: string): boolean {
     // For any other URL, we return true as a fallback
     return true;
@@ -13,20 +13,20 @@ export class OtherProvider implements AnalyticsProvider {
 
   async fetchAnalytics(url: string): Promise<AnalyticsResult> {
     // For other platforms, we return zeros/nulls as we cannot fetch real data
+    const now = new Date().toISOString();
     return {
       views: 0,
       likes: 0,
       comments: 0,
       shares: 0,
-      engagementRate: 0,
-      watchTime: null,
+      saves: 0,
+      duration: 0,
       thumbnail: null,
       title: null,
-      creator: null,
-      syncedAt: new Date().toISOString(),
       publishedAt: null,
-      durationSeconds: null,
-      platformId: '',
+      creator: null,
+      status: "unsupported",
+      syncedAt: now,
     };
   }
 }

@@ -3,15 +3,14 @@ export interface AnalyticsResult {
   likes: number;
   comments: number;
   shares: number;
-  engagementRate: number;
-  watchTime: number | null;
+  saves: number;
+  duration: number; // in seconds
   thumbnail: string | null;
   title: string | null;
+  publishedAt: string | null; // ISO 8601
   creator: string | null;
-  syncedAt: string;
-  publishedAt: string | null;
-  durationSeconds: number | null;
-  platformId: string;
+  status: string; // e.g., "success", "error", "requires_authorization", "invalid_url"
+  syncedAt: string; // ISO 8601 timestamp of when the analytics were fetched
 }
 
 export interface AnalyticsProvider {
