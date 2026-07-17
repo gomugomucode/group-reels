@@ -7,7 +7,12 @@ async function assertAdmin(supabase: any, userId: string) {
     _user_id: userId,
     _role: "admin",
   });
-  if (error) throw new Error("Could not verify permissions");
+  if (error) {
+    console.error(error);
+    throw new Error(
+      error instanceof Error ? error.message : JSON.stringify(error)
+    );
+  }
   if (!data) throw new Error("Forbidden: admin access required");
 }
 
@@ -31,12 +36,19 @@ export const setUserRole = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+
     if (data.makeAdmin) {
       const { error } = await supabaseAdmin.from("user_roles").insert({ user_id: data.userId, role: "admin" });
-      if (error && error.code !== "23505") throw new Error(error.message);
+      if (error && error.code !== "23505") {
+        console.error(error);
+        throw new Error(error instanceof Error ? error.message : JSON.stringify(error));
+      }
     } else {
       const { error } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId).eq("role", "admin");
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error(error);
+        throw new Error(error instanceof Error ? error.message : JSON.stringify(error));
+      }
     }
 
     return { ok: true };
@@ -101,7 +113,10 @@ export const updateUserAccount = createServerFn({ method: "POST" })
     const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
       email: data.email,
     });
-    if (authError) throw new Error(authError.message);
+    if (authError) {
+      console.error(authError);
+      throw new Error(authError instanceof Error ? authError.message : JSON.stringify(authError));
+    }
 
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
@@ -112,7 +127,10 @@ export const updateUserAccount = createServerFn({ method: "POST" })
         updated_at: new Date().toISOString(),
       })
       .eq("id", data.userId);
-    if (profileError) throw new Error(profileError.message);
+    if (profileError) {
+      console.error(profileError);
+      throw new Error(profileError instanceof Error ? profileError.message : JSON.stringify(profileError));
+    }
 
     return { ok: true };
   });
@@ -135,7 +153,12 @@ export const deleteUserAccount = createServerFn({ method: "POST" })
       "@/integrations/supabase/client.server"
     );
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error(error);
+      throw new Error(
+        error instanceof Error ? error.message : JSON.stringify(error)
+      );
+    }
     return { ok: true };
   });
 
@@ -156,7 +179,10 @@ export const sendPasswordReset = createServerFn({ method: "POST" })
       type: "recovery",
       email: data.email,
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error(error);
+      throw new Error(error instanceof Error ? error.message : JSON.stringify(error));
+    }
     return { ok: true };
   });
 

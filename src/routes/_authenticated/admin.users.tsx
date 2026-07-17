@@ -178,8 +178,8 @@ function AdminUsersPage() {
 
         // Status filter
         if (statusFilter !== "all") {
-          if (statusFilter === "disabled" && !p.disabled) return false;
-          if (statusFilter === "active" && p.disabled) return false;
+          if (statusFilter === "disabled" && !p.suspended_at) return false;
+          if (statusFilter === "active" && p.suspended_at) return false;
         }
 
         // Date filter
@@ -390,7 +390,7 @@ function AdminUsersPage() {
       p.totalContent,
       p.totalViews,
       p.created_at,
-      p.disabled ? "Suspended" : "Active",
+p.suspended_at ? "Suspended" : "Active"
     ]);
 
     const csv = [headers, ...rows]
@@ -684,7 +684,7 @@ function AdminUsersPage() {
                           })}
                         </TableCell>
                         <TableCell>
-                          {p.disabled ? (
+                          {Boolean(p.suspended_at) ? (
                             <Badge className="border-transparent bg-destructive/15 text-destructive text-[10px] font-semibold">
                               Suspended
                             </Badge>
@@ -696,7 +696,13 @@ function AdminUsersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
-                            <Button asChild variant="ghost" size="icon" className="size-8" title="View Profile">
+                            <Button
+                              asChild
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
+                              title="View Profile"
+                            >
                               <Link to="/admin/users/$id" params={{ id: p.id }}>
                                 <User className="size-4" />
                               </Link>
@@ -739,13 +745,13 @@ function AdminUsersPage() {
                               variant="ghost"
                               size="icon"
                               className="size-8"
-                              title={p.disabled ? "Unsuspend account" : "Suspend account"}
+                              title={Boolean(p.suspended_at) ? "Unsuspend account" : "Suspend account"}
                               disabled={isSelf}
                               onClick={() =>
-                                toggleDisabled.mutate({ userId: p.id, disabled: !p.disabled })
+                                toggleDisabled.mutate({ userId: p.id, disabled: !Boolean(p.suspended_at) })
                               }
                             >
-                              {p.disabled ? (
+                              {Boolean(p.suspended_at) ? (
                                 <CheckCircle2 className="size-4 text-emerald-500" />
                               ) : (
                                 <Ban className="size-4 text-destructive" />

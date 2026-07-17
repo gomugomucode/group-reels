@@ -341,7 +341,7 @@ function UserDetailPage() {
                     Creator
                   </Badge>
                 )}
-                {profile.disabled ? (
+                {profile.suspended_at !== null ? (
                   <Badge className="bg-destructive/10 text-destructive border-destructive/20 text-[10px]" variant="outline">
                     Suspended
                   </Badge>
@@ -404,7 +404,7 @@ function UserDetailPage() {
                   </Button>
                 )}
 
-                {profile.disabled ? (
+                {profile.suspended_at !== null ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -607,7 +607,7 @@ function UserDetailPage() {
                   ) : (
                     userVideos.map((v) => (
                       <TableRow key={v.id} className="text-xs">
-                        <TableCell className="max-w-[180px] truncate">
+                        <TableCell className="max-w-180px truncate">
                           <p className="font-semibold">{v.title || "Untitled"}</p>
                           <a
                             href={v.url}
@@ -692,7 +692,7 @@ function UserDetailPage() {
                 <div className="relative border-l border-border pl-4 space-y-4 text-xs">
                   {timelineEvents.map((event, index) => (
                     <div key={`${event.id}-${index}`} className="relative">
-                      <span className={`absolute -left-[21px] top-1 flex size-2 rounded-full ${event.color}`} />
+                      <span className={`absolute -left-21px top-1 flex size-2 rounded-full ${event.color}`} />
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-foreground">{event.title}</span>

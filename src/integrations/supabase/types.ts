@@ -580,6 +580,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      },
+      audit_logs: {
+        Row: {
+          id: string
+          actor_id: string | null
+          action: string
+          entity_type: string
+          entity_id: string | null
+          metadata: Json
+          ip_address: string | null
+          user_agent: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          actor_id?: string
+          action: string
+          entity_type: string
+          entity_id?: string
+          metadata?: Json
+          ip_address?: string
+          user_agent?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          actor_id?: string
+          action?: string
+          entity_type?: string
+          entity_id?: string
+          metadata?: Json
+          ip_address?: string
+          user_agent?: string
+          created_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
