@@ -547,65 +547,59 @@ function AdminDashboard() {
                     )}
                   </div>
                 )}
-              </div>
-
-              {/* 8 KPI Cards Grid (Task 1) */}
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard
-                  label="Total Users"
-                  value={profiles.length}
-                  icon={<Users className="size-4" />}
-                  accent
-                />
-                <StatCard
-                  label="Total Content"
-                  value={videos.length}
-                  icon={<Video className="size-4" />}
-                />
-                <StatCard
-                  label="Today's Views"
-                  value={formatCount(todayMetrics.views)}
-                  icon={<Eye className="size-4" />}
-                  accent
-                />
-                <StatCard
-                  label="Today's Likes"
-                  value={formatCount(todayMetrics.likes)}
-                  icon={<ThumbsUp className="size-4" />}
-                />
-                <StatCard
-                  label="Today's Growth"
-                  value={`${todayMetrics.growthPercent.toFixed(1)}%`}
-                  icon={<TrendingUp className="size-4" />}
-                  accent
-                />
-                <StatCard
-                  label="Connected Platforms"
-                  value={todayMetrics.connectedPlatforms}
-                  icon={<Layers className="size-4" />}
-                />
-                <StatCard
-                  label="Pending Refreshes"
-                  value={todayMetrics.pendingRefreshes}
-                  icon={<RefreshCw className="size-4" />}
-                />
-                <div className="rounded-xl border border-border bg-card p-5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">System Status</span>
-                    <span
-                      className={`grid size-9 place-items-center rounded-lg ${
-                        todayMetrics.status === "Healthy"
-                          ? "bg-emerald-500/15 text-emerald-500"
-                          : "bg-amber-500/15 text-amber-500"
-                      }`}
-                    >
-                      <Globe className="size-4" />
-                    </span>
+              </div>              {/* KPI Cards Grid */}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                <Card className="p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Users</span>
+                    <Users className="size-4 text-primary" />
                   </div>
-                  <p className="mt-3 font-display text-lg font-bold tracking-tight">
+                  <p className="text-2xl font-bold mt-2 text-foreground">{profiles.length}</p>
+                </Card>
+
+                <Card className="p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Groups</span>
+                    <FolderKanban className="size-4 text-accent" />
+                  </div>
+                  <p className="text-2xl font-bold mt-2 text-foreground">{groups.length}</p>
+                </Card>
+
+                <Card className="p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Videos</span>
+                    <Video className="size-4 text-success" />
+                  </div>
+                  <p className="text-2xl font-bold mt-2 text-foreground">{videos.length}</p>
+                </Card>
+
+                <Card className="p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Connected Accounts</span>
+                    <UserCheck className="size-4 text-primary" />
+                  </div>
+                  <p className="text-2xl font-bold mt-2 text-foreground">{activeCollaborations}</p>
+                </Card>
+
+                <Card className="p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Pending Sync</span>
+                    <RefreshCw className="size-4 text-amber-500" />
+                  </div>
+                  <p className="text-2xl font-bold mt-2 text-foreground">{todayMetrics.pendingRefreshes}</p>
+                </Card>
+
+                <Card className="p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>System Health</span>
+                    <Globe className="size-4 text-accent" />
+                  </div>
+                  <p className={`text-base font-bold mt-2 truncate ${
+                    todayMetrics.status === "Healthy" ? "text-emerald-500" : "text-amber-500"
+                  }`}>
                     {todayMetrics.status}
                   </p>
-                </div>
+                </Card>
               </div>
 
               {/* Quick Summary Panels */}
@@ -613,7 +607,7 @@ function AdminDashboard() {
                 {/* Platform share preview */}
                 <Card className="shadow-sm">
                   <CardHeader className="p-4 pb-2">
-                    <CardTitle className="text-base font-bold">Platform Breakdown</CardTitle>
+                    <CardTitle className="text-base font-bold">Platform Distribution</CardTitle>
                     <CardDescription className="text-xs">Views share by social channel</CardDescription>
                   </CardHeader>
                   <CardContent className="h-60 p-2">
@@ -653,37 +647,65 @@ function AdminDashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Top 5 Content list */}
-                <Card className="lg:col-span-2 shadow-sm">
-                  <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base font-bold">Top Performing Content</CardTitle>
-                      <CardDescription className="text-xs">
-                        Platform videos with the highest views
-                      </CardDescription>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("analytics")} className="h-8 text-xs gap-1">
-                      <span>View Analytics</span>
-                      <ArrowRight className="size-3" />
-                    </Button>
+                {/* Column 2: Latest Uploads */}
+                <Card className="shadow-sm">
+                  <CardHeader className="p-4 pb-2">
+                    <CardTitle className="text-base font-bold">Latest Uploads</CardTitle>
+                    <CardDescription className="text-xs">
+                      Recently linked video links
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="divide-y divide-border">
-                      {topVideosList.slice(0, 5).map((v) => (
-                        <div key={v.id} className="flex items-center justify-between p-3 px-4 text-xs">
-                          <div className="min-w-0 flex-1 pr-3">
-                            <p className="truncate font-semibold text-foreground">{v.title || "Untitled"}</p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                              {PLATFORM_LABELS[v.platform as Platform]} • {v.team_name}
-                            </p>
+                      {videos.slice(0, 5).length === 0 ? (
+                        <p className="text-xs text-muted-foreground p-4 text-center">No uploads found.</p>
+                      ) : (
+                        videos.slice(0, 5).map((v) => (
+                          <div key={v.id} className="flex items-center justify-between p-3 px-4 text-xs">
+                            <div className="min-w-0 flex-1 pr-3">
+                              <p className="truncate font-semibold text-foreground">{v.title || "Untitled Video"}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                {PLATFORM_LABELS[v.platform as Platform] || v.platform}
+                              </p>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground shrink-0">
+                              {new Date(v.created_at).toLocaleDateString()}
+                            </span>
                           </div>
-                          <div className="text-right">
-                            <p className="font-bold text-foreground">{formatCount(v.last_view_count)} views</p>
-                            <p className="text-[9px] text-muted-foreground">likes: {formatCount(v.last_like_count)}</p>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Column 3: Latest Activity timeline */}
+                <Card className="shadow-sm">
+                  <CardHeader className="p-4 pb-2">
+                    <CardTitle className="text-base font-bold flex items-center gap-1.5">
+                      <Activity className="size-4.5 text-primary" /> Latest Activity
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Platform events audit trail
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4 max-h-[240px] overflow-y-auto space-y-3">
+                    {activityFeedEvents.slice(0, 5).length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center">No activity logged.</p>
+                    ) : (
+                      activityFeedEvents.slice(0, 5).map((event) => {
+                        const date = new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        return (
+                          <div key={event.id} className="flex gap-2 text-[11px] leading-snug">
+                            <span className="size-1.5 rounded-full bg-primary mt-1 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-foreground truncate">{event.title}</p>
+                              <p className="text-muted-foreground text-[10px] mt-0.5 truncate">{event.description}</p>
+                            </div>
+                            <span className="text-[9px] text-muted-foreground shrink-0">{date}</span>
+                          </div>
+                        );
+                      })
+                    )}
                   </CardContent>
                 </Card>
               </div>

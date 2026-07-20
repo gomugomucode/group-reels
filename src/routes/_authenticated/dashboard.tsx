@@ -15,6 +15,7 @@ import {
   ThumbsUp,
   TrendingUp,
   BarChart3,
+  Trophy,
 } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
 import { CreatorInsights } from "@/components/creator-insights";
@@ -26,7 +27,11 @@ import {
   usePendingInvitations,
   useGroupMembers,
   useGroupMetricsHistory,
+  useTopVideos,
+  useActivityFeed,
+  useGroupLeaderboard,
 } from "@/hooks/use-data";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/stat-card";
 import { VideoLinkDialog } from "@/components/video-link-dialog";
 import { Button } from "@/components/ui/button";
@@ -70,6 +75,9 @@ function DashboardPage() {
   const { data: ownedGroup, isLoading: ownedLoading } = useMyGroup(user?.id);
   const { data: memberships = [], isLoading: membershipsLoading } = useMyMemberships(user?.id);
   const { data: invites = [], isLoading: invitesLoading } = usePendingInvitations(profile?.email);
+  const { data: topVideos = [], isLoading: topVideosLoading } = useTopVideos(5);
+  const { data: topGroups = [], isLoading: leaderboardLoading } = useGroupLeaderboard();
+  const { data: activityFeed = [], isLoading: activityLoading } = useActivityFeed();
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
@@ -296,7 +304,117 @@ function DashboardPage() {
       ) : (
         <>
           {/* Creator Insights Module */}
-          <CreatorInsights videos={videos} metricsHistory={metricsHistory} />
+          <CreatorInsights videos={videos} metricsHistory={metricsHistory} members={activeMembers} />
+
+          {/* Dashboard Leaderboards & Activity Feed */}
+          <div className="mt-8 grid gap-6 lg:grid-cols-3 animate-in fade-in-50 duration-200">
+            {/* Leaderboard Column */}
+            <div className="lg:col-span-2 space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="size-5 text-amber-500" /> Competition Leaderboards
+                  </CardTitle>
+                  <CardDescription>See how your team stacks up against other groups in the campus video contest.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {/* Top Groups */}
+                    <div>
+                      <h3 className="text-sm font-semibold mb-3 border-b border-border pb-1 text-foreground flex items-center gap-1.5">
+                        <Users className="size-4 text-primary" /> Group Rankings
+                      </h3>
+                      {leaderboardLoading ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                      ) : topGroups.length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-2">No group standings available yet.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {topGroups.slice(0, 5).map((item: any, idx: number) => (
+                            <div key={item.group_id} className="flex items-center justify-between text-xs p-2 rounded-lg bg-secondary/30">
+                              <span className="font-semibold truncate max-w-[150px]">
+                                {idx + 1}. {item.group?.team_name || "Unknown Team"}
+                              </span>
+                              <span className="text-muted-foreground font-mono">{(item.total_views || 0).toLocaleString()} views</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Top Videos */}
+                    <div>
+                      <h3 className="text-sm font-semibold mb-3 border-b border-border pb-1 text-foreground flex items-center gap-1.5">
+                        <Video className="size-4 text-accent" /> Top Videos
+                      </h3>
+                      {topVideosLoading ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                      ) : topVideos.length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-2">No video standings available yet.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {topVideos.slice(0, 5).map((item: any, idx: number) => (
+                            <div key={item.id} className="flex items-center justify-between text-xs p-2 rounded-lg bg-secondary/30">
+                              <div className="min-w-0 flex-1 pr-2">
+                                <p className="font-semibold truncate">{idx + 1}. {item.title || "Untitled"}</p>
+                                <p className="text-[10px] text-muted-foreground truncate">{item.team_name || "a team"}</p>
+                              </div>
+                              <span className="text-muted-foreground shrink-0 font-mono">{(item.last_view_count || 0).toLocaleString()} views</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recent Activity Column */}
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="size-5 text-primary" /> Recent Activity
+                </CardTitle>
+                <CardDescription>chronological events on the platform</CardDescription>
+              </CardHeader>
+              <CardContent className="h-[280px] overflow-y-auto pr-1">
+                {activityLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ) : activityFeed.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-4 text-center">No recent activity logs.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {activityFeed.map((event: any) => {
+                      const date = new Date(event.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      return (
+                        <div key={event.id} className="flex gap-2 text-xs border-l border-border pl-3 pb-3 relative">
+                          <span className="absolute -left-1.5 top-0.5 size-3 rounded-full bg-primary/20 border border-primary shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-foreground truncate">{event.title}</p>
+                            <p className="text-muted-foreground text-[10px] mt-0.5">{event.description}</p>
+                          </div>
+                          <span className="text-[9px] text-muted-foreground shrink-0">{date}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Content library */}
           <div className="mt-8 rounded-2xl border border-border bg-card">

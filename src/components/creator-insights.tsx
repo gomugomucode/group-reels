@@ -11,13 +11,14 @@ import {
   Pie,
   Cell,
   LineChart,
-  Line
+  Line,
+  AreaChart,
+  Area
 } from "recharts";
-import { Lightbulb, Trophy, TrendingUp, Filter, ExternalLink, MessageSquare, Heart, Eye } from "lucide-react";
+import { Lightbulb, Trophy, TrendingUp, Filter, ExternalLink, MessageSquare, Heart, Eye, Users, BarChart3 } from "lucide-react";
 import { type VideoLink } from "@/hooks/use-data";
 import { StatCard } from "@/components/stat-card";
 import { VideoThumbnail } from "@/components/video-thumbnail";
-import { VideoStatsBadge } from "@/components/video-stats-badge";
 import { formatCount } from "@/lib/youtube";
 import {
   Select,
@@ -27,15 +28,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PLATFORM_LABELS } from "@/lib/video-platforms";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
 interface CreatorInsightsProps {
   videos: VideoLink[];
   metricsHistory: any[];
+  members: any[];
 }
 
 const COLORS = ['#ef4444', '#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#6366f1'];
 
-export function CreatorInsights({ videos, metricsHistory }: CreatorInsightsProps) {
+export function CreatorInsights({ videos, metricsHistory, members }: CreatorInsightsProps) {
   const [topSort, setTopSort] = useState<"views" | "likes" | "comments" | "engagement">("views");
 
   const stats = useMemo(() => {
@@ -90,11 +93,55 @@ export function CreatorInsights({ videos, metricsHistory }: CreatorInsightsProps
     
     sorted.forEach((h: any) => {
       const dateStr = new Date(h.recorded_at).toISOString().split('T')[0];
-      byDate[dateStr] = (byDate[dateStr] || 0) + (h.views || 0); // Simplified total for that day
+      byDate[dateStr] = (byDate[dateStr] || 0) + (h.views || 0);
     });
 
     return Object.entries(byDate).map(([date, views]) => ({ date, views }));
   }, [metricsHistory]);
+
+  // Members Joined over Time
+  const membersJoinedData = useMemo(() => {
+    if (!members || members.length === 0) return [];
+    const sorted = [...members].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    const counts: Record<string, number> = {};
+    sorted.forEach((m) => {
+      const date = new Date(m.created_at);
+      const monthStr = date.toLocaleString("default", { month: "short", year: "numeric" });
+      counts[monthStr] = (counts[monthStr] || 0) + 1;
+    });
+    let cumulative = 0;
+    return Object.entries(counts).map(([month, count]) => {
+      cumulative += count;
+      return { month, count: cumulative };
+    });
+  }, [members]);
+
+  // Views by Platform
+  const viewsByPlatformData = useMemo(() => {
+    const views: Record<string, number> = { youtube: 0, tiktok: 0, instagram: 0, facebook: 0 };
+    videos.forEach((v) => {
+      if (v.platform in views) {
+        views[v.platform] = (views[v.platform] || 0) + (v.last_view_count || 0);
+      } else {
+        views[v.platform] = v.last_view_count || 0;
+      }
+    });
+    return Object.entries(views).map(([platform, count]) => ({
+      platform: PLATFORM_LABELS[platform as keyof typeof PLATFORM_LABELS] || platform,
+      views: count
+    }));
+  }, [videos]);
+
+  // Likes vs Views Area Chart
+  const likesVsViewsData = useMemo(() => {
+    return videos.map((v) => ({
+      title: v.title ? (v.title.length > 15 ? v.title.substring(0, 15) + "..." : v.title) : "Untitled",
+      views: v.last_view_count || 0,
+      likes: v.last_like_count || 0,
+    })).sort((a, b) => b.views - a.views).slice(0, 8);
+  }, [videos]);
 
   const topContent = useMemo(() => {
     return [...videos].sort((a, b) => {
@@ -152,11 +199,11 @@ export function CreatorInsights({ videos, metricsHistory }: CreatorInsightsProps
       {/* Insights & Top Content Row */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Top Content */}
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
+        <Card className="lg:col-span-2">
+          <CardHeader className="p-5 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
               <Trophy className="size-5 text-amber-500" /> Top Performing Content
-            </h3>
+            </CardTitle>
             <Select value={topSort} onValueChange={(v: any) => setTopSort(v)}>
               <SelectTrigger className="w-40 h-8 text-xs">
                 <SelectValue placeholder="Sort by" />
@@ -168,15 +215,15 @@ export function CreatorInsights({ videos, metricsHistory }: CreatorInsightsProps
                 <SelectItem value="engagement">Highest Engagement</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-3">
+          </CardHeader>
+          <CardContent className="p-5 pt-0 space-y-3">
             {topContent.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">No content available.</p>
             ) : (
               topContent.map((v, i) => (
                 <div key={v.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/30 transition-colors">
                   <div className="font-bold text-muted-foreground w-4 text-center">{i + 1}</div>
-                  <VideoThumbnail thumbnailUrl={v.thumbnail_url} platform={v.platform} className="w-16 h-10 rounded" />
+                  <VideoThumbnail thumbnailUrl={v.thumbnail_url} platform={v.platform} className="w-16 h-10 rounded animate-in fade-in duration-200" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold truncate" title={v.title || "Untitled"}>{v.title || "Untitled Content"}</p>
                     <div className="flex text-xs text-muted-foreground gap-2 mt-0.5">
@@ -188,69 +235,188 @@ export function CreatorInsights({ videos, metricsHistory }: CreatorInsightsProps
                 </div>
               ))
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* AI Insights & Platform Distribution */}
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+          <Card className="p-5">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2 mb-4">
               <Lightbulb className="size-5 text-primary" /> Intelligence
-            </h3>
+            </CardTitle>
             <ul className="space-y-3">
               {insights.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Not enough data to generate insights.</p>
               ) : (
                 insights.map((insight, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-sm">
-                    <div className="mt-1 size-1.5 rounded-full bg-primary shrink-0" />
+                  <li key={idx} className="flex items-start gap-2 text-sm leading-relaxed text-muted-foreground">
+                    <div className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
                     <span>{insight}</span>
                   </li>
                 ))
               )}
             </ul>
-          </div>
+          </Card>
           
-          <div className="rounded-2xl border border-border bg-card p-5">
-             <h3 className="text-sm font-semibold mb-4">Platform Distribution</h3>
+          <Card className="p-5">
+             <CardTitle className="text-sm font-semibold mb-4">Platform Distribution</CardTitle>
              <div className="h-40">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={platformData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={60}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {platformData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip 
-                     contentStyle={{
-                        background: "var(--color-popover)",
-                        border: "1px solid var(--color-border)",
-                        borderRadius: 8,
-                        color: "var(--color-popover-foreground)",
-                      }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              {platformData.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No platform data.</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={platformData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={60}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {platformData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip 
+                       contentStyle={{
+                          background: "var(--color-popover)",
+                          border: "1px solid var(--color-border)",
+                          borderRadius: 8,
+                          color: "var(--color-popover-foreground)",
+                        }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
              </div>
-          </div>
+          </Card>
         </div>
       </div>
 
+      {/* Visual Charts Grid */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Members Joined Monthly */}
+        <Card className="p-5">
+          <CardHeader className="p-0 mb-4">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Users className="size-4.5 text-primary" /> Members Joined (Monthly)
+            </CardTitle>
+            <CardDescription className="text-xs">Cumulative group member registrations</CardDescription>
+          </CardHeader>
+          <div className="h-64">
+            {membersJoinedData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No member data.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={membersJoinedData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="month" stroke="var(--color-muted-foreground)" fontSize={11} />
+                  <YAxis stroke="var(--color-muted-foreground)" fontSize={11} allowDecimals={false} />
+                  <ChartTooltip
+                    contentStyle={{
+                      background: "var(--color-popover)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 8,
+                      color: "var(--color-popover-foreground)",
+                    }}
+                  />
+                  <Line type="monotone" dataKey="count" stroke="var(--color-primary)" strokeWidth={2} dot={{ r: 4 }} name="Total Members" />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
+
+        {/* Views by Platform Bar Chart */}
+        <Card className="p-5">
+          <CardHeader className="p-0 mb-4">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <BarChart3 className="size-4.5 text-accent" /> Views by Platform
+            </CardTitle>
+            <CardDescription className="text-xs">Views accumulated across platform uploads</CardDescription>
+          </CardHeader>
+          <div className="h-64">
+            {viewsByPlatformData.every(d => d.views === 0) ? (
+              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No view statistics yet.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={viewsByPlatformData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="platform" stroke="var(--color-muted-foreground)" fontSize={11} />
+                  <YAxis stroke="var(--color-muted-foreground)" fontSize={11} tickFormatter={(v) => formatCount(v)} />
+                  <ChartTooltip
+                    contentStyle={{
+                      background: "var(--color-popover)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 8,
+                      color: "var(--color-popover-foreground)",
+                    }}
+                    formatter={(v: any) => [`${v.toLocaleString()} views`, "Views"]}
+                  />
+                  <Bar dataKey="views" fill="var(--color-accent)" radius={[4, 4, 0, 0]}>
+                    {viewsByPlatformData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Likes vs Views Area Chart */}
+      <Card className="p-5">
+        <CardHeader className="p-0 mb-4">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <TrendingUp className="size-4.5 text-primary" /> Likes vs Views
+          </CardTitle>
+          <CardDescription className="text-xs">Likes compared to views for top uploads</CardDescription>
+        </CardHeader>
+        <div className="h-64">
+          {likesVsViewsData.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No content metrics.</div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={likesVsViewsData}>
+                <defs>
+                  <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorLikes" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                <XAxis dataKey="title" stroke="var(--color-muted-foreground)" fontSize={10} />
+                <YAxis stroke="var(--color-muted-foreground)" fontSize={11} tickFormatter={(v) => formatCount(v)} />
+                <ChartTooltip
+                  contentStyle={{
+                    background: "var(--color-popover)",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: 8,
+                    color: "var(--color-popover-foreground)",
+                  }}
+                />
+                <Area type="monotone" dataKey="views" stroke="var(--color-primary)" fillOpacity={1} fill="url(#colorViews)" name="Views" />
+                <Area type="monotone" dataKey="likes" stroke="var(--color-accent)" fillOpacity={1} fill="url(#colorLikes)" name="Likes" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </Card>
+
       {/* Views Growth Chart */}
       {growthChartData.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <Card className="p-5">
           <div className="mb-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
               <TrendingUp className="size-5 text-primary" /> Views Growth
-            </h3>
+            </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">Cumulative views over time</p>
           </div>
           <div className="h-64">
@@ -283,7 +449,7 @@ export function CreatorInsights({ videos, metricsHistory }: CreatorInsightsProps
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

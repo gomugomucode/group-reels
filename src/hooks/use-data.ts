@@ -651,3 +651,36 @@ export function useSyncGroupAnalytics() {
     },
   });
 }
+
+export function useActivityFeed() {
+  return useQuery({
+    queryKey: ["activity-feed"],
+    staleTime: 30_000,
+    gcTime: 300_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("activity_feed")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useGroupLeaderboard() {
+  return useQuery({
+    queryKey: ["group-leaderboard"],
+    staleTime: 60_000,
+    gcTime: 300_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("analytics")
+        .select("*, group:groups(team_name)")
+        .order("total_views", { ascending: false });
+      if (error) throw error;
+      return data as Array<any & { group: { team_name: string } | null }>;
+    },
+  });
+}
