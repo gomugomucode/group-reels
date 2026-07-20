@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Clapperboard,
   Users,
@@ -23,19 +23,50 @@ import {
   ThumbsUp,
   MessageSquare,
   TrendingUp,
+  Heart,
+  Video,
+  Layers,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { usePublicContestStats } from "@/hooks/use-data";
+import { LineChart, Line, ResponsiveContainer } from "recharts";
+import { PlatformBadge } from "@/components/platform-badge";
 
 export const Route = createFileRoute("/")({
   component: Landing,
 });
 
+function CountUp({ value }: { value: number }) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let start = 0;
+    const end = value;
+    if (end <= 0) {
+      setCount(0);
+      return;
+    }
+    const increment = Math.ceil(end / 30) || 1;
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= end) {
+        setCount(end);
+        clearInterval(timer);
+      } else {
+        setCount(start);
+      }
+    }, 25);
+    return () => clearInterval(timer);
+  }, [value]);
+  return <>{count.toLocaleString()}</>;
+}
+
 function Landing() {
   const { session, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const { data: stats, isLoading: statsLoading } = usePublicContestStats();
 
   useEffect(() => {
     if (!loading && session) {
@@ -150,70 +181,149 @@ function Landing() {
             </div>
           </div>
 
-          {/* Right Side: Mock Dashboard Illustration */}
+          {/* Right Side: Live Analytics Widget */}
           <div className="lg:col-span-5 relative mt-6 lg:mt-0">
             <div className="absolute -inset-4 rounded-3xl bg-primary/10 blur-3xl opacity-75" />
-            <div className="relative rounded-2xl border border-border bg-card/60 p-5 backdrop-blur-sm shadow-glow animate-in fade-in-50 duration-500">
+            <div className="relative rounded-2xl border border-border bg-card/60 p-5 backdrop-blur-md shadow-glow animate-in fade-in-50 duration-500">
               <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
                 <div className="flex items-center gap-2">
-                  <span className="size-2.5 rounded-full bg-red-500" />
-                  <span className="size-2.5 rounded-full bg-yellow-500" />
-                  <span className="size-2.5 rounded-full bg-green-500" />
+                  <span className="size-2 rounded-full bg-red-500 animate-ping" />
+                  <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase flex items-center gap-1.5">
+                    Live Standings Preview
+                  </span>
                 </div>
-                <Badge variant="outline" className="text-[10px] uppercase font-semibold">Live Preview</Badge>
+                <Badge variant="outline" className="text-[10px] uppercase font-semibold border-primary/30 text-primary">Live Stats</Badge>
               </div>
-              <div className="space-y-4">
-                {/* Stats row */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-border/50 bg-secondary/20 p-3">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Total Views</span>
-                      <Eye className="size-3.5 text-primary" />
-                    </div>
-                    <p className="text-xl font-bold mt-1 text-foreground">24.5K</p>
-                  </div>
-                  <div className="rounded-xl border border-border/50 bg-secondary/20 p-3">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Engagement</span>
-                      <TrendingUp className="size-3.5 text-accent" />
-                    </div>
-                    <p className="text-xl font-bold mt-1 text-foreground">12.4%</p>
-                  </div>
-                </div>
 
-                {/* Video item */}
-                <div className="rounded-xl border border-border bg-secondary/10 p-3 flex gap-3 items-center">
-                  <div className="size-12 shrink-0 bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-accent/20" />
-                    <Clapperboard className="size-5 text-muted-foreground" />
+              {statsLoading || !stats ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="h-16 rounded-xl bg-secondary/30 animate-pulse" />
+                    <div className="h-16 rounded-xl bg-secondary/30 animate-pulse" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate text-foreground">Campus Tour: Butwal Kalika</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge className="text-[9px] bg-red-500/10 text-red-500 border-none px-1.5">YouTube</Badge>
-                      <span className="text-[10px] text-muted-foreground">Sync successful</span>
+                  <div className="h-16 rounded-xl bg-secondary/30 animate-pulse" />
+                  <div className="h-16 rounded-xl bg-secondary/30 animate-pulse" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Stats row */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-border/50 bg-secondary/20 p-3 flex flex-col justify-between">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Total Views</span>
+                        <Eye className="size-3.5 text-primary" />
+                      </div>
+                      <p className="text-xl font-bold mt-1 text-foreground font-mono">
+                        <CountUp value={stats.total_views} />
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-border/50 bg-secondary/20 p-3 flex flex-col justify-between">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Engagement</span>
+                        <TrendingUp className="size-3.5 text-accent" />
+                      </div>
+                      <p className="text-xl font-bold mt-1 text-foreground font-mono">
+                        {stats.engagement_rate.toFixed(1)}%
+                      </p>
                     </div>
                   </div>
-                </div>
 
-                {/* Progress Indicators */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Platform Distribution</span>
-                    <span>100% active</span>
+                  {/* Leaderboard Card snippet */}
+                  <div className="rounded-xl border border-border bg-secondary/10 p-3 flex gap-3 items-center">
+                    <div className="size-10 shrink-0 bg-amber-500/10 rounded-lg flex items-center justify-center relative">
+                      <Trophy className="size-5 text-amber-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-muted-foreground uppercase font-semibold">Top Performing Team</p>
+                      <p className="text-xs font-bold truncate text-foreground mt-0.5">{stats.top_team_name}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{stats.top_team_views.toLocaleString()} views</p>
+                    </div>
                   </div>
-                  <div className="h-2 rounded-full bg-secondary overflow-hidden flex">
-                    <div className="h-full bg-red-500 w-[50%]" title="YouTube" />
-                    <div className="h-full bg-accent w-[30%]" title="TikTok" />
-                    <div className="h-full bg-pink-500 w-[20%]" title="Instagram" />
+
+                  {/* Latest Video upload */}
+                  <div className="rounded-xl border border-border bg-secondary/10 p-3 flex gap-3 items-center">
+                    <div className="size-10 shrink-0 bg-primary/10 rounded-lg flex items-center justify-center relative">
+                      <Clapperboard className="size-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-muted-foreground uppercase font-semibold">Latest Upload</p>
+                      <p className="text-xs font-bold truncate text-foreground mt-0.5" title={stats.latest_video.title}>
+                        {stats.latest_video.title}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        {stats.latest_video.platform && (
+                          <PlatformBadge platform={stats.latest_video.platform as any} />
+                        )}
+                        <span className="text-[9px] text-muted-foreground">Uploaded recently</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-[9px] text-muted-foreground">
-                    <span>50% YouTube</span>
-                    <span>30% TikTok</span>
-                    <span>20% Instagram</span>
+
+                  {/* Views timeline mini chart */}
+                  <div className="rounded-xl border border-border bg-secondary/10 p-3 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><BarChart3 className="size-3 text-success" /> Views Over Time</span>
+                      <span className="text-[10px] font-mono">Last 30 entries</span>
+                    </div>
+                    <div className="h-12 w-full mt-1">
+                      {stats.views_history.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-[10px] text-muted-foreground">Syncing metrics...</div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={stats.views_history}>
+                            <Line type="monotone" dataKey="views" stroke="var(--color-primary)" strokeWidth={1.5} dot={false} isAnimationActive={true} />
+                          </LineChart>
+                        </ResponsiveContainer>)}
+                    </div>
+                  </div>
+
+                  {/* Progress Indicators */}
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Platform Share</span>
+                      <span className="text-[10px]">Total: {stats.total_videos} items</span>
+                    </div>
+                    {(() => {
+                      const breakdown = stats.platform_breakdown || {};
+                      const total = Object.values(breakdown).reduce((sum: number, v: any) => sum + v, 0) || 1;
+                      const yt = Math.round(((breakdown.youtube || 0) / total) * 100);
+                      const tt = Math.round(((breakdown.tiktok || 0) / total) * 100);
+                      const ig = Math.round(((breakdown.instagram || 0) / total) * 100);
+                      const fb = Math.round(((breakdown.facebook || 0) / total) * 100);
+                      
+                      return (
+                        <>
+                          <div className="h-2 rounded-full bg-secondary overflow-hidden flex">
+                            {yt > 0 && <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${yt}%` }} title={`YouTube: ${yt}%`} />}
+                            {tt > 0 && <div className="h-full bg-blue-500 transition-all duration-500" style={{ width: `${tt}%` }} title={`TikTok: ${tt}%`} />}
+                            {ig > 0 && <div className="h-full bg-pink-500 transition-all duration-500" style={{ width: `${ig}%` }} title={`Instagram: ${ig}%`} />}
+                            {fb > 0 && <div className="h-full bg-blue-600 transition-all duration-500" style={{ width: `${fb}%` }} title={`Facebook: ${fb}%`} />}
+                          </div>
+                          <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
+                            {yt > 0 && <span>YT: {yt}%</span>}
+                            {tt > 0 && <span>TT: {tt}%</span>}
+                            {ig > 0 && <span>IG: {ig}%</span>}
+                            {fb > 0 && <span>FB: {fb}%</span>}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Badges footer */}
+                  <div className="flex flex-wrap gap-2 border-t border-border pt-3 mt-2 justify-between">
+                    <Badge variant="outline" className="text-[10px] text-muted-foreground border-border flex gap-1 items-center px-2 py-0.5">
+                      <Users className="size-3 text-primary" /> {stats.total_participants} Creators
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px] text-muted-foreground border-border flex gap-1 items-center px-2 py-0.5">
+                      <Layers className="size-3 text-accent" /> {stats.total_teams} Teams
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px] text-muted-foreground border-border flex gap-1 items-center px-2 py-0.5">
+                      <Video className="size-3 text-success" /> {stats.total_videos} Videos
+                    </Badge>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

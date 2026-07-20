@@ -692,3 +692,36 @@ export function useGroupLeaderboard() {
     },
   });
 }
+
+export function usePublicContestStats() {
+  return useQuery({
+    queryKey: ["public-contest-stats"],
+    staleTime: 60_000,
+    gcTime: 300_000,
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("get_public_contest_stats");
+      if (error) throw error;
+      return data as {
+        total_participants: number;
+        total_teams: number;
+        total_videos: number;
+        total_views: number;
+        total_likes: number;
+        total_comments: number;
+        engagement_rate: number;
+        platform_breakdown: Record<string, number>;
+        top_team_name: string;
+        top_team_views: number;
+        latest_video: {
+          title: string;
+          url: string;
+          platform: string;
+          published_at: string | null;
+        };
+        views_history: Array<{ date: string; views: number }>;
+      };
+    },
+  });
+}
