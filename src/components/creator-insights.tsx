@@ -15,9 +15,27 @@ import {
   AreaChart,
   Area
 } from "recharts";
-import { Lightbulb, Trophy, TrendingUp, Filter, ExternalLink, MessageSquare, Heart, Eye, Users, BarChart3 } from "lucide-react";
+import { 
+  Lightbulb, 
+  Trophy, 
+  TrendingUp, 
+  Filter, 
+  MessageSquare, 
+  Heart, 
+  Eye, 
+  Users, 
+  BarChart3, 
+  Calendar, 
+  Layers, 
+  Clock, 
+  Search,
+  CheckCircle,
+  Video,
+  ListTodo
+} from "lucide-react";
 import { type VideoLink } from "@/hooks/use-data";
 import { StatCard } from "@/components/stat-card";
+import { Button } from "@/components/ui/button";
 import { VideoThumbnail } from "@/components/video-thumbnail";
 import { formatCount } from "@/lib/youtube";
 import {
@@ -27,29 +45,107 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PLATFORM_LABELS } from "@/lib/video-platforms";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { PLATFORM_LABELS, type Platform } from "@/lib/video-platforms";
+import { PlatformBadge } from "@/components/platform-badge";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
 
 interface CreatorInsightsProps {
   videos: VideoLink[];
   metricsHistory: any[];
   members: any[];
+  allGroups?: any[];
+  allCreators?: any[];
 }
 
 const COLORS = ['#ef4444', '#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#6366f1'];
 
-export function CreatorInsights({ videos, metricsHistory, members }: CreatorInsightsProps) {
+export function CreatorInsights({ videos, metricsHistory, members, allGroups = [], allCreators = [] }: CreatorInsightsProps) {
+  // Filter States
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [platformFilter, setPlatformFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [teamFilter, setTeamFilter] = useState("all");
+  const [creatorFilter, setCreatorFilter] = useState("all");
+  const [dateRangeFilter, setDateRangeFilter] = useState("all");
+
   const [topSort, setTopSort] = useState<"views" | "likes" | "comments" | "engagement">("views");
 
+  const getTeamName = (groupId: string | undefined | null) => {
+    if (!groupId) return "Independent Creators";
+    const group = allGroups.find((g) => g.id === groupId);
+    return group?.team_name || "Independent Creators";
+  };
+
+  // Client-Side Video Filtering
+  const filteredVideos = useMemo(() => {
+    return videos.filter((v) => {
+      // 1. Search keyword
+      if (searchKeyword.trim()) {
+        const keyword = searchKeyword.toLowerCase();
+        const matches =
+          (v.title ?? "").toLowerCase().includes(keyword) ||
+          v.url.toLowerCase().includes(keyword) ||
+          v.platform.toLowerCase().includes(keyword) ||
+          (getTeamName(v.group_id) ?? "").toLowerCase().includes(keyword) ||
+          (v.channel_name ?? "").toLowerCase().includes(keyword);
+        if (!matches) return false;
+      }
+
+      // 2. Platform filter
+      if (platformFilter !== "all" && v.platform !== platformFilter) return false;
+
+      // 3. Status filter
+      if (statusFilter !== "all") {
+        if (statusFilter === "pending" && (v.sync_status === "idle" || v.sync_status === "pending")) {
+          // OK
+        } else if (v.sync_status !== statusFilter) {
+          return false;
+        }
+      }
+
+      // 4. Team filter
+      if (teamFilter !== "all" && v.group_id !== teamFilter) return false;
+
+      // 5. Creator filter
+      if (creatorFilter !== "all" && v.created_by !== creatorFilter) return false;
+
+      // 6. Date Range filter
+      if (dateRangeFilter !== "all") {
+        const publishedMs = new Date(v.published_at || v.created_at).getTime();
+        const nowMs = Date.now();
+        const days = dateRangeFilter === "7d" ? 7 : dateRangeFilter === "30d" ? 30 : 90;
+        if (nowMs - publishedMs > days * 24 * 60 * 60 * 1000) return false;
+      }
+
+      return true;
+    });
+  }, [videos, searchKeyword, platformFilter, statusFilter, teamFilter, creatorFilter, dateRangeFilter]);
+
+  // Filter history data matching filtered videos
+  const filteredHistory = useMemo(() => {
+    const videoIds = new Set(filteredVideos.map(v => v.id));
+    return metricsHistory.filter(h => videoIds.has(h.content_id || h.video_link_id));
+  }, [metricsHistory, filteredVideos]);
+
+  // Dynamic Statistics Calculations (Task 1)
   const stats = useMemo(() => {
     let totalViews = 0;
     let totalLikes = 0;
     let totalComments = 0;
     let lastUpdated = 0;
     const platformCounts: Record<string, number> = {};
-    const platformViews: Record<string, number> = {};
 
-    videos.forEach((v) => {
+    filteredVideos.forEach((v) => {
       totalViews += v.last_view_count || 0;
       totalLikes += v.last_like_count || 0;
       totalComments += v.last_comment_count || 0;
@@ -58,51 +154,32 @@ export function CreatorInsights({ videos, metricsHistory, members }: CreatorInsi
       if (vUpdated > lastUpdated) lastUpdated = vUpdated;
 
       platformCounts[v.platform] = (platformCounts[v.platform] || 0) + 1;
-      platformViews[v.platform] = (platformViews[v.platform] || 0) + (v.last_view_count || 0);
     });
 
-    const avgEngagement = totalViews > 0 ? ((totalLikes + totalComments) / totalViews) * 100 : 0;
-    
-    let bestPlatform = "None";
-    let maxPlatformViews = -1;
-    Object.entries(platformViews).forEach(([platform, views]) => {
-      if (views > maxPlatformViews) {
-        maxPlatformViews = views;
-        bestPlatform = platform;
-      }
-    });
+    const engagementRate = totalViews > 0 ? ((totalLikes + totalComments) / totalViews) * 100 : 0;
+    const avgViewsPerVideo = filteredVideos.length > 0 ? Math.round(totalViews / filteredVideos.length) : 0;
+    const totalMembersCount = new Set(filteredVideos.map(v => v.created_by)).size || (members?.length ?? 0);
+    const totalGroupsCount = new Set(filteredVideos.map(v => v.group_id).filter(Boolean)).size || (allGroups?.length ?? 0);
 
     return {
-      totalContent: videos.length,
+      totalMembers: totalMembersCount,
+      totalGroups: totalGroupsCount,
+      totalVideos: filteredVideos.length,
       totalViews,
       totalLikes,
       totalComments,
-      avgEngagement,
-      lastUpdated: lastUpdated > 0 ? new Date(lastUpdated) : null,
-      bestPlatform,
-      platformCounts
+      engagementRate,
+      avgViewsPerVideo
     };
-  }, [videos]);
+  }, [filteredVideos, members, allGroups]);
 
-  const growthChartData = useMemo(() => {
-    if (!metricsHistory || metricsHistory.length === 0) return [];
-    
-    // Group history by date (YYYY-MM-DD)
-    const byDate: Record<string, number> = {};
-    const sorted = [...metricsHistory].sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime());
-    
-    sorted.forEach((h: any) => {
-      const dateStr = new Date(h.recorded_at).toISOString().split('T')[0];
-      byDate[dateStr] = (byDate[dateStr] || 0) + (h.views || 0);
-    });
-
-    return Object.entries(byDate).map(([date, views]) => ({ date, views }));
-  }, [metricsHistory]);
-
-  // Members Joined over Time
+  // Chart data 1: Monthly Member Growth (cumulative)
   const membersJoinedData = useMemo(() => {
-    if (!members || members.length === 0) return [];
-    const sorted = [...members].sort(
+    const listToUse = members?.length > 0 ? members : allCreators;
+    if (!listToUse || listToUse.length === 0) return [];
+    
+    // Sort by registration date
+    const sorted = [...listToUse].sort(
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
     const counts: Record<string, number> = {};
@@ -116,35 +193,71 @@ export function CreatorInsights({ videos, metricsHistory, members }: CreatorInsi
       cumulative += count;
       return { month, count: cumulative };
     });
-  }, [members]);
+  }, [members, allCreators]);
 
-  // Views by Platform
+  // Chart data 2: Views by Platform Bar Chart
   const viewsByPlatformData = useMemo(() => {
     const views: Record<string, number> = { youtube: 0, tiktok: 0, instagram: 0, facebook: 0 };
-    videos.forEach((v) => {
-      if (v.platform in views) {
-        views[v.platform] = (views[v.platform] || 0) + (v.last_view_count || 0);
-      } else {
-        views[v.platform] = v.last_view_count || 0;
-      }
+    filteredVideos.forEach((v) => {
+      views[v.platform] = (views[v.platform] || 0) + (v.last_view_count || 0);
     });
     return Object.entries(views).map(([platform, count]) => ({
       platform: PLATFORM_LABELS[platform as keyof typeof PLATFORM_LABELS] || platform,
       views: count
     }));
-  }, [videos]);
+  }, [filteredVideos]);
 
-  // Likes vs Views Area Chart
+  // Chart data 3: Platform Distribution Pie Chart
+  const platformDistributionData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredVideos.forEach((v) => {
+      counts[v.platform] = (counts[v.platform] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({
+      name: PLATFORM_LABELS[name as keyof typeof PLATFORM_LABELS] || name,
+      value
+    }));
+  }, [filteredVideos]);
+
+  // Chart data 4: Likes vs Views Area Chart
   const likesVsViewsData = useMemo(() => {
-    return videos.map((v) => ({
+    return filteredVideos.map((v) => ({
       title: v.title ? (v.title.length > 15 ? v.title.substring(0, 15) + "..." : v.title) : "Untitled",
       views: v.last_view_count || 0,
       likes: v.last_like_count || 0,
     })).sort((a, b) => b.views - a.views).slice(0, 8);
-  }, [videos]);
+  }, [filteredVideos]);
 
+  // Chart data 5: Top 10 Teams Horizontal Bar Chart (Task 4)
+  const topTeamsChartData = useMemo(() => {
+    const teamMap: Record<string, { name: string; views: number }> = {};
+    filteredVideos.forEach((v) => {
+      const teamId = v.group_id || "unassigned";
+      const teamName = getTeamName(v.group_id);
+      if (!teamMap[teamId]) {
+        teamMap[teamId] = { name: teamName, views: 0 };
+      }
+      teamMap[teamId].views += v.last_view_count || 0;
+    });
+    return Object.values(teamMap)
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 10);
+  }, [filteredVideos]);
+
+  // Chart data 6: Top 10 Videos Horizontal Bar Chart (Task 4)
+  const topVideosChartData = useMemo(() => {
+    return [...filteredVideos]
+      .sort((a, b) => (b.last_view_count || 0) - (a.last_view_count || 0))
+      .slice(0, 10)
+      .map((v) => ({
+        name: v.title ? (v.title.length > 15 ? v.title.substring(0, 15) + "..." : v.title) : "Untitled Video",
+        views: v.last_view_count || 0,
+      }));
+  }, [filteredVideos]);
+
+  // Top Performing videos listing
   const topContent = useMemo(() => {
-    return [...videos].sort((a, b) => {
+    return [...filteredVideos].sort((a, b) => {
       if (topSort === "views") return (b.last_view_count || 0) - (a.last_view_count || 0);
       if (topSort === "likes") return (b.last_like_count || 0) - (a.last_like_count || 0);
       if (topSort === "comments") return (b.last_comment_count || 0) - (a.last_comment_count || 0);
@@ -155,164 +268,235 @@ export function CreatorInsights({ videos, metricsHistory, members }: CreatorInsi
       }
       return 0;
     }).slice(0, 5);
-  }, [videos, topSort]);
+  }, [filteredVideos, topSort]);
 
+  // Dynamic Contest Leaderboard calculations (Task 3)
+  const teamStandings = useMemo(() => {
+    const standingsMap: Record<string, {
+      teamName: string;
+      membersCount: number;
+      videoCount: number;
+      views: number;
+      likes: number;
+      comments: number;
+      platforms: Set<string>;
+    }> = {};
+
+    filteredVideos.forEach((v) => {
+      const teamId = v.group_id || "unassigned";
+      const teamName = getTeamName(v.group_id);
+      
+      if (!standingsMap[teamId]) {
+        standingsMap[teamId] = {
+          teamName,
+          membersCount: 0,
+          videoCount: 0,
+          views: 0,
+          likes: 0,
+          comments: 0,
+          platforms: new Set<string>(),
+        };
+      }
+      
+      const s = standingsMap[teamId];
+      s.videoCount += 1;
+      s.views += v.last_view_count || 0;
+      s.likes += v.last_like_count || 0;
+      s.comments += v.last_comment_count || 0;
+      if (v.platform) s.platforms.add(v.platform);
+    });
+
+    // Populate membersCount
+    Object.entries(standingsMap).forEach(([teamId, s]) => {
+      if (teamId === "unassigned") {
+        s.membersCount = new Set(filteredVideos.filter(v => !v.group_id).map(v => v.created_by)).size;
+      } else {
+        const groupObj = allGroups.find(g => g.id === teamId);
+        s.membersCount = groupObj?.member_names?.length || 1;
+      }
+    });
+
+    return Object.entries(standingsMap)
+      .map(([id, data]) => {
+        const engagement = data.views > 0 ? ((data.likes + data.comments) / data.views) * 100 : 0;
+        return {
+          id,
+          ...data,
+          engagement,
+        };
+      })
+      .sort((a, b) => b.views - a.views);
+  }, [filteredVideos, allGroups]);
+
+  // AI insights generator
   const insights = useMemo(() => {
     const list = [];
-    if (stats.bestPlatform !== "None") {
-      list.push(`Your ${PLATFORM_LABELS[stats.bestPlatform as keyof typeof PLATFORM_LABELS] || stats.bestPlatform} content drives the most views.`);
-    }
-    if (stats.avgEngagement > 5) {
-      list.push(`Great engagement! Your audience interacts with ${stats.avgEngagement.toFixed(1)}% of your views.`);
-    } else if (stats.totalViews > 0) {
-      list.push(`Your average engagement rate is ${stats.avgEngagement.toFixed(1)}%.`);
-    }
+    let bestPlatform = "None";
+    let maxPlatformViews = -1;
+    const viewsByP: Record<string, number> = {};
     
-    if (stats.lastUpdated) {
-      const daysSince = Math.floor((Date.now() - stats.lastUpdated.getTime()) / (1000 * 60 * 60 * 24));
-      if (daysSince > 2) {
-        list.push(`Content hasn't been refreshed in ${daysSince} days.`);
+    filteredVideos.forEach((v) => {
+      viewsByP[v.platform] = (viewsByP[v.platform] || 0) + (v.last_view_count || 0);
+    });
+
+    Object.entries(viewsByP).forEach(([platform, views]) => {
+      if (views > maxPlatformViews) {
+        maxPlatformViews = views;
+        bestPlatform = platform;
       }
+    });
+
+    if (bestPlatform !== "None") {
+      list.push(`Your ${PLATFORM_LABELS[bestPlatform as keyof typeof PLATFORM_LABELS] || bestPlatform} content drives the most views.`);
+    }
+    if (stats.engagementRate > 5) {
+      list.push(`Great engagement! Your audience interacts with ${stats.engagementRate.toFixed(1)}% of your views.`);
+    }
+    if (stats.avgViewsPerVideo > 1000) {
+      list.push(`Impressive! Videos average ${stats.avgViewsPerVideo.toLocaleString()} views.`);
     }
     return list;
-  }, [stats]);
-
-  const platformData = useMemo(() => {
-    return Object.entries(stats.platformCounts).map(([name, value]) => ({
-      name: PLATFORM_LABELS[name as keyof typeof PLATFORM_LABELS] || name,
-      value
-    }));
-  }, [stats.platformCounts]);
+  }, [filteredVideos, stats]);
 
   return (
     <div className="space-y-6">
-      {/* Profile Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-        <StatCard label="Total Content" value={stats.totalContent.toLocaleString()} icon={<Lightbulb className="size-4" />} accent />
-        <StatCard label="Total Views" value={stats.totalViews.toLocaleString()} icon={<Eye className="size-4" />} />
-        <StatCard label="Total Likes" value={stats.totalLikes.toLocaleString()} icon={<Heart className="size-4" />} />
-        <StatCard label="Total Comments" value={stats.totalComments.toLocaleString()} icon={<MessageSquare className="size-4" />} />
-        <StatCard label="Avg Engagement" value={`${stats.avgEngagement.toFixed(2)}%`} icon={<TrendingUp className="size-4 text-success" />} />
-        <StatCard label="Best Platform" value={PLATFORM_LABELS[stats.bestPlatform as keyof typeof PLATFORM_LABELS] || stats.bestPlatform} icon={<Trophy className="size-4 text-amber-500" />} />
-      </div>
+      {/* ── Filters & Search Panel ────────────────────────── */}
+      <Card className="p-5 shadow-sm border border-border bg-card">
+        <CardHeader className="p-0 mb-4">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Filter className="size-4 text-primary" /> Advanced Analytics Filters
+          </CardTitle>
+          <CardDescription className="text-xs">Filter content library and charts simultaneously</CardDescription>
+        </CardHeader>
+        <div className="space-y-4">
+          {/* Row 1: Search */}
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-9 h-9 text-xs"
+              placeholder="Search team name, members, video title, platform..."
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+            />
+          </div>
 
-      {/* Insights & Top Content Row */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Top Content */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="p-5 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <Trophy className="size-5 text-amber-500" /> Top Performing Content
-            </CardTitle>
-            <Select value={topSort} onValueChange={(v: any) => setTopSort(v)}>
-              <SelectTrigger className="w-40 h-8 text-xs">
-                <SelectValue placeholder="Sort by" />
+          {/* Row 2: Selects */}
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+            <Select value={dateRangeFilter} onValueChange={setDateRangeFilter}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Date Range" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="views">Most Views</SelectItem>
-                <SelectItem value="likes">Most Likes</SelectItem>
-                <SelectItem value="comments">Most Comments</SelectItem>
-                <SelectItem value="engagement">Highest Engagement</SelectItem>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="7d">Last 7 Days</SelectItem>
+                <SelectItem value="30d">Last 30 Days</SelectItem>
+                <SelectItem value="90d">Last 90 Days</SelectItem>
               </SelectContent>
             </Select>
-          </CardHeader>
-          <CardContent className="p-5 pt-0 space-y-3">
-            {topContent.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No content available.</p>
-            ) : (
-              topContent.map((v, i) => (
-                <div key={v.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/30 transition-colors">
-                  <div className="font-bold text-muted-foreground w-4 text-center">{i + 1}</div>
-                  <VideoThumbnail thumbnailUrl={v.thumbnail_url} platform={v.platform} className="w-16 h-10 rounded animate-in fade-in duration-200" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold truncate" title={v.title || "Untitled"}>{v.title || "Untitled Content"}</p>
-                    <div className="flex text-xs text-muted-foreground gap-2 mt-0.5">
-                      <span>{formatCount(v.last_view_count || 0)} views</span>
-                      <span>•</span>
-                      <span>{formatCount(v.last_like_count || 0)} likes</span>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
 
-        {/* AI Insights & Platform Distribution */}
-        <div className="space-y-6">
-          <Card className="p-5">
-            <CardTitle className="text-lg font-semibold flex items-center gap-2 mb-4">
-              <Lightbulb className="size-5 text-primary" /> Intelligence
-            </CardTitle>
-            <ul className="space-y-3">
-              {insights.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Not enough data to generate insights.</p>
-              ) : (
-                insights.map((insight, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-sm leading-relaxed text-muted-foreground">
-                    <div className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
-                    <span>{insight}</span>
-                  </li>
-                ))
-              )}
-            </ul>
-          </Card>
-          
-          <Card className="p-5">
-             <CardTitle className="text-sm font-semibold mb-4">Platform Distribution</CardTitle>
-             <div className="h-40">
-              {platformData.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No platform data.</div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={platformData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={60}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {platformData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <ChartTooltip 
-                       contentStyle={{
-                          background: "var(--color-popover)",
-                          border: "1px solid var(--color-border)",
-                          borderRadius: 8,
-                          color: "var(--color-popover-foreground)",
-                        }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-             </div>
-          </Card>
+            <Select value={platformFilter} onValueChange={setPlatformFilter}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Platform" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Platforms</SelectItem>
+                <SelectItem value="youtube">YouTube</SelectItem>
+                <SelectItem value="tiktok">TikTok</SelectItem>
+                <SelectItem value="instagram">Instagram</SelectItem>
+                <SelectItem value="facebook">Facebook</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="success">Synced</SelectItem>
+                <SelectItem value="error">Sync Failed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Team Filter (Admin only or if group selection lists are passed) */}
+            {allGroups.length > 0 && (
+              <Select value={teamFilter} onValueChange={setTeamFilter}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Team" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Teams</SelectItem>
+                  {allGroups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.team_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Creator Filter */}
+            {allCreators.length > 0 && (
+              <Select value={creatorFilter} onValueChange={setCreatorFilter}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Creator" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Creators</SelectItem>
+                  {allCreators.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.username}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 text-xs border-dashed"
+              onClick={() => {
+                setSearchKeyword("");
+                setPlatformFilter("all");
+                setStatusFilter("all");
+                setTeamFilter("all");
+                setCreatorFilter("all");
+                setDateRangeFilter("all");
+              }}
+            >
+              Reset Filters
+            </Button>
+          </div>
         </div>
+      </Card>
+
+      {/* ── 8 Analytics Cards Grid ────────────────────────── */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+        <StatCard label="Total Members" value={stats.totalMembers} icon={<Users className="size-4" />} />
+        <StatCard label="Total Groups" value={stats.totalGroups} icon={<Layers className="size-4 text-accent" />} />
+        <StatCard label="Total Videos" value={stats.totalVideos} icon={<Video className="size-4 text-success" />} />
+        <StatCard label="Total Views" value={stats.totalViews.toLocaleString()} icon={<Eye className="size-4" />} />
+        <StatCard label="Total Likes" value={stats.totalLikes.toLocaleString()} icon={<Heart className="size-4" />} />
+        <StatCard label="Total Comments" value={stats.totalComments.toLocaleString()} icon={<MessageSquare className="size-4 text-primary" />} />
+        <StatCard label="Engagement Rate" value={`${stats.engagementRate.toFixed(2)}%`} icon={<TrendingUp className="size-4" />} accent />
+        <StatCard label="Avg Views / Video" value={stats.avgViewsPerVideo.toLocaleString()} icon={<Trophy className="size-4 text-amber-500" />} />
       </div>
 
-      {/* Visual Charts Grid */}
+      {/* ── Visual Charts Suite ───────────────────────────── */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Members Joined Monthly */}
+        {/* Monthly Member Growth Line Chart */}
         <Card className="p-5">
           <CardHeader className="p-0 mb-4">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Users className="size-4.5 text-primary" /> Members Joined (Monthly)
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Users className="size-4 text-primary" /> Monthly Member Growth
             </CardTitle>
-            <CardDescription className="text-xs">Cumulative group member registrations</CardDescription>
           </CardHeader>
           <div className="h-64">
             {membersJoinedData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No member data.</div>
+              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No member timeline data.</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={membersJoinedData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                  <XAxis dataKey="month" stroke="var(--color-muted-foreground)" fontSize={11} />
+                  <XAxis dataKey="month" stroke="var(--color-muted-foreground)" fontSize={10} />
                   <YAxis stroke="var(--color-muted-foreground)" fontSize={11} allowDecimals={false} />
                   <ChartTooltip
                     contentStyle={{
@@ -320,10 +504,52 @@ export function CreatorInsights({ videos, metricsHistory, members }: CreatorInsi
                       border: "1px solid var(--color-border)",
                       borderRadius: 8,
                       color: "var(--color-popover-foreground)",
+                      fontSize: 11,
                     }}
                   />
-                  <Line type="monotone" dataKey="count" stroke="var(--color-primary)" strokeWidth={2} dot={{ r: 4 }} name="Total Members" />
+                  <Line type="monotone" dataKey="count" stroke="var(--color-primary)" strokeWidth={2} dot={{ r: 4 }} name="Members" />
                 </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
+
+        {/* Platform Distribution Pie Chart */}
+        <Card className="p-5">
+          <CardHeader className="p-0 mb-4">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Layers className="size-4 text-accent" /> Platform Distribution
+            </CardTitle>
+          </CardHeader>
+          <div className="h-64">
+            {platformDistributionData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No platform distribution data.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={platformDistributionData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={65}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {platformDistributionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip 
+                     contentStyle={{
+                        background: "var(--color-popover)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: 8,
+                        color: "var(--color-popover-foreground)",
+                        fontSize: 11,
+                      }}
+                  />
+                </PieChart>
               </ResponsiveContainer>
             )}
           </div>
@@ -332,10 +558,9 @@ export function CreatorInsights({ videos, metricsHistory, members }: CreatorInsi
         {/* Views by Platform Bar Chart */}
         <Card className="p-5">
           <CardHeader className="p-0 mb-4">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <BarChart3 className="size-4.5 text-accent" /> Views by Platform
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <BarChart3 className="size-4 text-success" /> Views by Platform
             </CardTitle>
-            <CardDescription className="text-xs">Views accumulated across platform uploads</CardDescription>
           </CardHeader>
           <div className="h-64">
             {viewsByPlatformData.every(d => d.views === 0) ? (
@@ -344,14 +569,15 @@ export function CreatorInsights({ videos, metricsHistory, members }: CreatorInsi
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={viewsByPlatformData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                  <XAxis dataKey="platform" stroke="var(--color-muted-foreground)" fontSize={11} />
-                  <YAxis stroke="var(--color-muted-foreground)" fontSize={11} tickFormatter={(v) => formatCount(v)} />
+                  <XAxis dataKey="platform" stroke="var(--color-muted-foreground)" fontSize={10} />
+                  <YAxis stroke="var(--color-muted-foreground)" fontSize={10} tickFormatter={(v) => formatCount(v)} />
                   <ChartTooltip
                     contentStyle={{
                       background: "var(--color-popover)",
                       border: "1px solid var(--color-border)",
                       borderRadius: 8,
                       color: "var(--color-popover-foreground)",
+                      fontSize: 11,
                     }}
                     formatter={(v: any) => [`${v.toLocaleString()} views`, "Views"]}
                   />
@@ -365,92 +591,218 @@ export function CreatorInsights({ videos, metricsHistory, members }: CreatorInsi
             )}
           </div>
         </Card>
-      </div>
 
-      {/* Likes vs Views Area Chart */}
-      <Card className="p-5">
-        <CardHeader className="p-0 mb-4">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <TrendingUp className="size-4.5 text-primary" /> Likes vs Views
-          </CardTitle>
-          <CardDescription className="text-xs">Likes compared to views for top uploads</CardDescription>
-        </CardHeader>
-        <div className="h-64">
-          {likesVsViewsData.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No content metrics.</div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={likesVsViewsData}>
-                <defs>
-                  <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorLikes" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                <XAxis dataKey="title" stroke="var(--color-muted-foreground)" fontSize={10} />
-                <YAxis stroke="var(--color-muted-foreground)" fontSize={11} tickFormatter={(v) => formatCount(v)} />
-                <ChartTooltip
-                  contentStyle={{
-                    background: "var(--color-popover)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 8,
-                    color: "var(--color-popover-foreground)",
-                  }}
-                />
-                <Area type="monotone" dataKey="views" stroke="var(--color-primary)" fillOpacity={1} fill="url(#colorViews)" name="Views" />
-                <Area type="monotone" dataKey="likes" stroke="var(--color-accent)" fillOpacity={1} fill="url(#colorLikes)" name="Likes" />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </Card>
-
-      {/* Views Growth Chart */}
-      {growthChartData.length > 0 && (
+        {/* Likes vs Views Area Chart */}
         <Card className="p-5">
-          <div className="mb-4">
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <TrendingUp className="size-5 text-primary" /> Views Growth
+          <CardHeader className="p-0 mb-4">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <TrendingUp className="size-4 text-primary" /> Likes vs Views
             </CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">Cumulative views over time</p>
-          </div>
+          </CardHeader>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={growthChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                <XAxis dataKey="date" stroke="var(--color-muted-foreground)" fontSize={11} />
-                <YAxis
-                  stroke="var(--color-muted-foreground)"
-                  fontSize={11}
-                  tickFormatter={(v) => formatCount(v)}
-                />
-                <ChartTooltip
-                  contentStyle={{
-                    background: "var(--color-popover)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: 12,
-                    color: "var(--color-popover-foreground)",
-                  }}
-                  formatter={(v: any) => [`${v.toLocaleString()} views`, "Total Views"]}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="views"
-                  stroke="var(--color-primary)"
-                  strokeWidth={2.5}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {likesVsViewsData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No video metrics available.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={likesVsViewsData}>
+                  <defs>
+                    <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorLikes" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="title" stroke="var(--color-muted-foreground)" fontSize={9} />
+                  <YAxis stroke="var(--color-muted-foreground)" fontSize={10} tickFormatter={(v) => formatCount(v)} />
+                  <ChartTooltip
+                    contentStyle={{
+                      background: "var(--color-popover)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 8,
+                      color: "var(--color-popover-foreground)",
+                      fontSize: 11,
+                    }}
+                  />
+                  <Area type="monotone" dataKey="views" stroke="var(--color-primary)" fillOpacity={1} fill="url(#colorViews)" name="Views" />
+                  <Area type="monotone" dataKey="likes" stroke="var(--color-accent)" fillOpacity={1} fill="url(#colorLikes)" name="Likes" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </Card>
-      )}
+      </div>
+
+      {/* Horizontal Bar Charts Grid (Task 4) */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Top 10 Teams Horizontal Bar Chart */}
+        <Card className="p-5">
+          <CardHeader className="p-0 mb-4">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Trophy className="size-4 text-amber-500" /> Top 10 Teams
+            </CardTitle>
+          </CardHeader>
+          <div className="h-72">
+            {topTeamsChartData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No standings available.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topTeamsChartData} layout="vertical" margin={{ left: 10, right: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
+                  <XAxis type="number" stroke="var(--color-muted-foreground)" fontSize={10} tickFormatter={(v) => formatCount(v)} />
+                  <YAxis dataKey="name" type="category" stroke="var(--color-muted-foreground)" fontSize={9} width={90} />
+                  <ChartTooltip
+                    contentStyle={{
+                      background: "var(--color-popover)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 8,
+                      color: "var(--color-popover-foreground)",
+                      fontSize: 11,
+                    }}
+                    formatter={(v: any) => [`${v.toLocaleString()} views`]}
+                  />
+                  <Bar dataKey="views" fill="var(--color-primary)" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
+
+        {/* Top 10 Videos Horizontal Bar Chart */}
+        <Card className="p-5">
+          <CardHeader className="p-0 mb-4">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Video className="size-4 text-success" /> Top 10 Videos
+            </CardTitle>
+          </CardHeader>
+          <div className="h-72">
+            {topVideosChartData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No videos mapped.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topVideosChartData} layout="vertical" margin={{ left: 10, right: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
+                  <XAxis type="number" stroke="var(--color-muted-foreground)" fontSize={10} tickFormatter={(v) => formatCount(v)} />
+                  <YAxis dataKey="name" type="category" stroke="var(--color-muted-foreground)" fontSize={9} width={90} />
+                  <ChartTooltip
+                    contentStyle={{
+                      background: "var(--color-popover)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 8,
+                      color: "var(--color-popover-foreground)",
+                      fontSize: 11,
+                    }}
+                    formatter={(v: any) => [`${v.toLocaleString()} views`]}
+                  />
+                  <Bar dataKey="views" fill="var(--color-accent)" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* ── Dynamic Contest Leaderboard Table (Task 3) ────── */}
+      <Card className="shadow-sm border border-border bg-card">
+        <CardHeader className="p-5 flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle className="text-lg font-bold flex items-center gap-2">
+              <Trophy className="size-5 text-amber-500" /> Contest Standings
+            </CardTitle>
+            <CardDescription className="text-xs mt-0.5">Real-time team standings across all content channels</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16 text-center text-xs">Rank</TableHead>
+                  <TableHead className="text-xs">Team</TableHead>
+                  <TableHead className="text-center text-xs">Members</TableHead>
+                  <TableHead className="text-center text-xs">Videos</TableHead>
+                  <TableHead className="text-right text-xs">Views</TableHead>
+                  <TableHead className="text-right text-xs">Likes</TableHead>
+                  <TableHead className="text-right text-xs">Comments</TableHead>
+                  <TableHead className="text-right text-xs">Engagement %</TableHead>
+                  <TableHead className="text-center text-xs">Platforms</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {teamStandings.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center text-xs text-muted-foreground py-6">
+                      No team standings available yet.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  teamStandings.map((team, idx) => {
+                    const rank = idx + 1;
+                    // Styling top three teams (Gold, Silver, Bronze)
+                    const rankStyles = 
+                      rank === 1 ? "bg-yellow-500/10 text-yellow-600 border border-yellow-500/30" :
+                      rank === 2 ? "bg-zinc-400/15 text-zinc-500 border border-zinc-400/20" :
+                      rank === 3 ? "bg-amber-600/10 text-amber-700 border border-amber-600/25" :
+                      "bg-secondary/40 text-muted-foreground";
+
+                    return (
+                      <TableRow key={team.id} className="hover:bg-secondary/15 transition-colors">
+                        <TableCell className="text-center">
+                          <span className={`inline-grid size-6 place-items-center rounded-full text-xs font-bold ${rankStyles}`}>
+                            {rank}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-semibold text-xs text-foreground truncate max-w-[180px]">
+                          {team.teamName}
+                        </TableCell>
+                        <TableCell className="text-center text-xs font-medium">{team.membersCount}</TableCell>
+                        <TableCell className="text-center text-xs font-medium">{team.videoCount}</TableCell>
+                        <TableCell className="text-right text-xs font-mono font-bold text-foreground">
+                          {team.views.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right text-xs font-mono">{team.likes.toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-xs font-mono">{team.comments.toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-xs font-mono font-semibold text-primary">
+                          {team.engagement.toFixed(2)}%
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {Array.from(team.platforms).map((p) => (
+                              <PlatformBadge key={p} platform={p as Platform} />
+                            ))}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Intelligence Box */}
+      <Card className="p-5">
+        <CardTitle className="text-lg font-semibold flex items-center gap-2 mb-4">
+          <Lightbulb className="size-5 text-primary" /> Intelligence Insights
+        </CardTitle>
+        <ul className="space-y-3">
+          {insights.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Not enough data to generate recommendations yet.</p>
+          ) : (
+            insights.map((insight, idx) => (
+              <li key={idx} className="flex items-start gap-2 text-sm leading-relaxed text-muted-foreground">
+                <div className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
+                <span>{insight}</span>
+              </li>
+            ))
+          )}
+        </ul>
+      </Card>
     </div>
   );
 }

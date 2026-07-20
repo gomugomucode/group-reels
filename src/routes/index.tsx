@@ -56,16 +56,17 @@ function Landing() {
       {/* ── Navigation Bar ─────────────────────────────────── */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-90">
+          <Link to="/" className="transition-opacity hover:opacity-90">
             <img
               src="/bkclogo.png"
               alt="BKC Logo"
-              className="size-9 rounded-full object-contain bg-white p-0.5"
+              className="h-14 w-auto object-contain"
             />
-            <span className="font-display text-lg font-bold tracking-tight">
+            {/* <span className="font-display text-lg font-bold tracking-tight">
               BKC <span className="text-primary">Creator Hub</span>
-            </span>
+            </span> */}
           </Link>
+          
 
           {/* Desktop Nav Links */}
           <nav className="hidden md:flex items-center gap-1">

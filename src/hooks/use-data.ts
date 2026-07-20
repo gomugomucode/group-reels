@@ -108,6 +108,8 @@ export function useVideoLinks(groupId: string | undefined) {
     enabled: !!groupId,
     staleTime: 60_000,
     gcTime: 300_000,
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("content")
@@ -128,6 +130,7 @@ export function useAllVideoLinks() {
     staleTime: 60_000,
     gcTime: 300_000,
     placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("content")
@@ -172,6 +175,7 @@ export function useAdminDashboardData() {
     staleTime: 60_000,
     gcTime: 300_000,
     placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
     queryFn: async () => {
       const [
         { data: profiles, error: profilesError },
@@ -657,6 +661,8 @@ export function useActivityFeed() {
     queryKey: ["activity-feed"],
     staleTime: 30_000,
     gcTime: 300_000,
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("activity_feed")
@@ -674,6 +680,8 @@ export function useGroupLeaderboard() {
     queryKey: ["group-leaderboard"],
     staleTime: 60_000,
     gcTime: 300_000,
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("analytics")
