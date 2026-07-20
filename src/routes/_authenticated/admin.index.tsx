@@ -31,6 +31,9 @@ import {
   Heart,
   PlusCircle,
   UserCheck,
+  MessageSquare,
+  BarChart3,
+  Trophy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -169,6 +172,12 @@ function AdminDashboard() {
       validCount,
     };
   }, [analyticsSummary, videos]);
+
+  const topTeams = useMemo(() => {
+    return [...analyticsSummary]
+      .sort((a, b) => (b.total_views ?? 0) - (a.total_views ?? 0))
+      .slice(0, 5);
+  }, [analyticsSummary]);
 
   // Redesigned Today's metrics (Task 1)
   const todayMetrics = useMemo(() => {
@@ -549,15 +558,219 @@ function AdminDashboard() {
                   </div>
                 )}
               </div>
-              {/* Creator Insights Console */}
-              <div className="mt-6">
-                <CreatorInsights 
-                  videos={videos} 
-                  metricsHistory={historyData} 
-                  members={profiles} 
-                  allGroups={groups} 
-                  allCreators={profiles} 
-                />
+
+              {/* Quick Links */}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <Card className="p-4 hover:bg-secondary/15 transition-colors border border-border bg-card">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm font-semibold">Users Management</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Manage user profiles and roles</p>
+                    </div>
+                    <Button asChild size="sm" variant="outline" className="h-8">
+                      <Link to="/admin/users">Open <ArrowRight className="ml-1 size-3.5" /></Link>
+                    </Button>
+                  </div>
+                </Card>
+                <Card className="p-4 hover:bg-secondary/15 transition-colors border border-border bg-card">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm font-semibold">Teams & Groups</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Monitor collaborative squads</p>
+                    </div>
+                    <Button asChild size="sm" variant="outline" className="h-8">
+                      <Link to="/admin/groups">Open <ArrowRight className="ml-1 size-3.5" /></Link>
+                    </Button>
+                  </div>
+                </Card>
+                <Card className="p-4 hover:bg-secondary/15 transition-colors border border-border bg-card">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm font-semibold">Content Library</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Audit uploaded video links</p>
+                    </div>
+                    <Button asChild size="sm" variant="outline" className="h-8">
+                      <Link to="/admin/content">Open <ArrowRight className="ml-1 size-3.5" /></Link>
+                    </Button>
+                  </div>
+                </Card>
+                <Card className="p-4 hover:bg-secondary/15 transition-colors border border-border bg-card">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm font-semibold">Analytics Panel</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Track system sync logs</p>
+                    </div>
+                    <Button asChild size="sm" variant="outline" className="h-8">
+                      <Link to="/admin/analytics">Open <ArrowRight className="ml-1 size-3.5" /></Link>
+                    </Button>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Contest-wide statistics cards */}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                <StatCard label="Total Users" value={profiles.length.toLocaleString()} icon={<Users className="size-4" />} />
+                <StatCard label="Total Teams" value={groups.length.toLocaleString()} icon={<Layers className="size-4 text-accent" />} />
+                <StatCard label="Total Videos" value={videos.length.toLocaleString()} icon={<Video className="size-4 text-success" />} />
+                <StatCard label="Total Views" value={totals.views.toLocaleString()} icon={<Eye className="size-4" />} />
+                <StatCard label="Total Likes" value={totals.likes.toLocaleString()} icon={<Heart className="size-4 text-rose-500" />} />
+                <StatCard label="Total Comments" value={totals.comments.toLocaleString()} icon={<MessageSquare className="size-4 text-primary" />} />
+              </div>
+
+              {/* Two Core Charts */}
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Platform Distribution */}
+                <Card className="p-5 bg-card border border-border">
+                  <CardHeader className="p-0 mb-4">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <Layers className="size-4 text-accent" /> Platform Distribution
+                    </CardTitle>
+                  </CardHeader>
+                  <div className="h-64">
+                    {platformData.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No platform distribution data.</div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={platformData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={45}
+                            outerRadius={65}
+                            paddingAngle={3}
+                            dataKey="count"
+                            nameKey="platform"
+                          >
+                            {platformData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              background: "var(--color-popover)",
+                              border: "1px solid var(--color-border)",
+                              borderRadius: 8,
+                              fontSize: 11,
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </Card>
+
+                {/* Views by Platform */}
+                <Card className="p-5 bg-card border border-border">
+                  <CardHeader className="p-0 mb-4">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <BarChart3 className="size-4 text-success" /> Views by Platform
+                    </CardTitle>
+                  </CardHeader>
+                  <div className="h-64">
+                    {platformData.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No view statistics yet.</div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={platformData}>
+                          <defs>
+                            <linearGradient id="adminBarGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.9}/>
+                              <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                          <XAxis dataKey="platform" stroke="var(--color-muted-foreground)" fontSize={10} />
+                          <YAxis stroke="var(--color-muted-foreground)" fontSize={10} tickFormatter={(v) => formatCount(v)} />
+                          <Tooltip
+                            contentStyle={{
+                              background: "var(--color-popover)",
+                              border: "1px solid var(--color-border)",
+                              borderRadius: 8,
+                              fontSize: 11,
+                            }}
+                            formatter={(v: any) => [`${v.toLocaleString()} views`]}
+                          />
+                          <Bar dataKey="views" fill="url(#adminBarGradient)" radius={[6, 6, 0, 0]} isAnimationActive={true} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </Card>
+              </div>
+
+              {/* Tables: Top Teams & Recent Activity */}
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Top Teams Standings Table */}
+                <Card className="shadow-sm border border-border bg-card">
+                  <CardHeader className="p-5">
+                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                      <Trophy className="size-5 text-amber-500" /> Top Teams
+                    </CardTitle>
+                    <CardDescription className="text-xs">Highest performing collaboration groups</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-16 text-center text-xs">Rank</TableHead>
+                          <TableHead className="text-xs">Team</TableHead>
+                          <TableHead className="text-right text-xs">Videos</TableHead>
+                          <TableHead className="text-right text-xs">Views</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {topTeams.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="h-24 text-center text-xs text-muted-foreground">
+                              No team rankings available
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          topTeams.map((team, idx) => (
+                            <TableRow key={team.group_id} className="text-xs">
+                              <TableCell className="text-center font-bold">{idx + 1}</TableCell>
+                              <TableCell className="font-semibold">{team.team_name || "Collaboration Group"}</TableCell>
+                              <TableCell className="text-right">{team.video_count || 0}</TableCell>
+                              <TableCell className="text-right font-bold">{team.total_views?.toLocaleString() || 0}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                {/* Recent Activity feed */}
+                <Card className="shadow-sm border border-border bg-card">
+                  <CardHeader className="p-5">
+                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                      <Activity className="size-5 text-primary" /> Recent Activity
+                    </CardTitle>
+                    <CardDescription className="text-xs font-medium">Recent platform timeline notifications</CardDescription>
+                  </CardHeader>
+                  <CardContent className="h-[280px] overflow-y-auto pr-1">
+                    {activityFeedEvents.length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-12 text-center">No recent activity logs.</p>
+                    ) : (
+                      <div className="space-y-4 p-4 pt-0">
+                        {activityFeedEvents.slice(0, 10).map((event) => {
+                          const date = new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                          return (
+                            <div key={event.id} className="flex gap-3 text-xs border-l border-border pl-3 pb-3 relative">
+                              <span className="absolute -left-1.5 top-0.5 size-3 rounded-full bg-primary/20 border border-primary shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-foreground truncate">{event.title}</p>
+                                <p className="text-muted-foreground text-[10px] mt-0.5">{event.description}</p>
+                              </div>
+                              <span className="text-[9px] text-muted-foreground shrink-0">{date}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             </div>
           )}
