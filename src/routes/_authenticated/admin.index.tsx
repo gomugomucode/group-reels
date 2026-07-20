@@ -62,6 +62,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   component: AdminDashboard,
@@ -95,11 +96,59 @@ interface ActivityEvent {
   color: string;
 }
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="rounded-lg border border-border bg-card p-3 shadow-md text-xs space-y-1 text-card-foreground">
+        <p className="font-bold text-foreground">{label || data.platform}</p>
+        <div className="flex items-center justify-between gap-4 mt-1.5">
+          <span className="text-muted-foreground">Views:</span>
+          <span className="font-semibold text-foreground">{(data.views ?? 0).toLocaleString()}</span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-muted-foreground">Videos:</span>
+          <span className="font-semibold text-foreground">{data.count ?? 0}</span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+const CustomPieTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="rounded-lg border border-border bg-card p-3 shadow-md text-xs space-y-1 text-card-foreground">
+        <p className="font-bold text-foreground">{data.platform}</p>
+        <div className="flex items-center justify-between gap-4 mt-1.5">
+          <span className="text-muted-foreground">Videos:</span>
+          <span className="font-semibold text-foreground">{data.count}</span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-muted-foreground">Views:</span>
+          <span className="font-semibold text-foreground">{(data.views ?? 0).toLocaleString()}</span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-muted-foreground">Percentage:</span>
+          <span className="font-semibold text-primary">{data.percentage}%</span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 function AdminDashboard() {
   const { data: adminData, isLoading: adminLoading, refetch } = useAdminDashboardData();
   const syncFn = useServerFn(triggerFullSync);
   const [search, setSearch] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [scopeType, setScopeType] = useState<"all" | "team" | "creator">("all");
+  const [scopeTeamId, setScopeTeamId] = useState<string>("all");
+  const [scopeCreatorId, setScopeCreatorId] = useState<string>("all");
+  const [activityFilter, setActivityFilter] = useState("all");
 
   // Admin settings from local storage
   const [settings, setSettings] = useState<AdminSettings>(() => {
@@ -147,37 +196,85 @@ function AdminDashboard() {
   const activeCollaborations = adminData?.activeCollaborations ?? 0;
   const hasStoredAnalytics = adminData?.hasStoredAnalytics ?? false;
 
-  // Basic totals
+  // Scope filters computations (Part 2 & 8)
+  const filteredVideos = useMemo(() => {
+    return videos.filter((v) => {
+      if (scopeType === "team" && scopeTeamId !== "all") {
+        return v.group_id === scopeTeamId;
+      }
+      if (scopeType === "creator" && scopeCreatorId !== "all") {
+        return v.created_by === scopeCreatorId;
+      }
+      return true;
+    });
+  }, [videos, scopeType, scopeTeamId, scopeCreatorId]);
+
+  const filteredGroups = useMemo(() => {
+    return groups.filter((g) => {
+      if (scopeType === "team" && scopeTeamId !== "all") {
+        return g.id === scopeTeamId;
+      }
+      if (scopeType === "creator" && scopeCreatorId !== "all") {
+        return g.created_by === scopeCreatorId;
+      }
+      return true;
+    });
+  }, [groups, scopeType, scopeTeamId, scopeCreatorId]);
+
+  const filteredProfiles = useMemo(() => {
+    return profiles.filter((p) => {
+      if (scopeType === "team" && scopeTeamId !== "all") {
+        return videos.some(v => v.group_id === scopeTeamId && v.created_by === p.id);
+      }
+      if (scopeType === "creator" && scopeCreatorId !== "all") {
+        return p.id === scopeCreatorId;
+      }
+      return true;
+    });
+  }, [profiles, scopeType, scopeTeamId, scopeCreatorId, videos]);
+
+  const filteredAnalyticsSummary = useMemo(() => {
+    if (scopeType === "all") return analyticsSummary;
+    return filteredGroups.map((g) => {
+      const groupVideos = filteredVideos.filter(v => v.group_id === g.id);
+      const total_views = groupVideos.reduce((sum, v) => sum + (v.last_view_count ?? 0), 0);
+      const total_likes = groupVideos.reduce((sum, v) => sum + (v.last_like_count ?? 0), 0);
+      const total_comments = groupVideos.reduce((sum, v) => sum + (v.last_comment_count ?? 0), 0);
+      const video_count = groupVideos.length;
+      return {
+        group_id: g.id,
+        team_name: g.team_name,
+        total_views,
+        total_likes,
+        total_comments,
+        video_count,
+      };
+    });
+  }, [analyticsSummary, filteredGroups, filteredVideos, scopeType]);
+
   const totals = useMemo(() => {
     let views = 0;
     let likes = 0;
     let comments = 0;
-
-    analyticsSummary.forEach((g) => {
-      views += g.total_views ?? 0;
-      likes += g.total_likes ?? 0;
-      comments += g.total_comments ?? 0;
+    filteredVideos.forEach((v) => {
+      views += v.last_view_count ?? 0;
+      likes += v.last_like_count ?? 0;
+      comments += v.last_comment_count ?? 0;
     });
-
-    const averageViews = videos.length > 0 ? Math.round(views / videos.length) : 0;
-    const invalidCount = videos.filter((v) => v.status === "invalid").length;
-    const validCount = videos.filter((v) => v.status === "valid").length;
-
+    const averageViews = filteredVideos.length > 0 ? Math.round(views / filteredVideos.length) : 0;
     return {
       views,
       likes,
       comments,
       averageViews,
-      invalidCount,
-      validCount,
     };
-  }, [analyticsSummary, videos]);
+  }, [filteredVideos]);
 
   const topTeams = useMemo(() => {
-    return [...analyticsSummary]
+    return [...filteredAnalyticsSummary]
       .sort((a, b) => (b.total_views ?? 0) - (a.total_views ?? 0))
       .slice(0, 5);
-  }, [analyticsSummary]);
+  }, [filteredAnalyticsSummary]);
 
   // Redesigned Today's metrics (Task 1)
   const todayMetrics = useMemo(() => {
@@ -217,13 +314,13 @@ function AdminDashboard() {
         : 0;
 
     // Distinct platform count
-    const connectedPlatforms = new Set(videos.map((v) => v.platform)).size;
+    const connectedPlatforms = new Set(filteredVideos.map((v) => v.platform)).size;
 
     // Pending refreshes
-    const pendingRefreshes = videos.filter((v) => v.status === "pending").length;
+    const pendingRefreshes = filteredVideos.filter((v) => v.status === "pending").length;
 
     // System Status
-    const isSystemHealthy = settings.syncEnabled && videos.filter((v) => v.status === "invalid").length / (videos.length || 1) < 0.2;
+    const isSystemHealthy = settings.syncEnabled && filteredVideos.filter((v) => v.status === "invalid").length / (filteredVideos.length || 1) < 0.2;
 
     return {
       views: viewsGrowth,
@@ -233,12 +330,12 @@ function AdminDashboard() {
       pendingRefreshes,
       status: isSystemHealthy ? "Healthy" : "Attention Required",
     };
-  }, [historyData, videos, totals.views, settings.syncEnabled]);
+  }, [historyData, filteredVideos, totals.views, settings.syncEnabled]);
 
   // Cumulative User Growth (Task 8)
   const userGrowthData = useMemo(() => {
     const monthMap = new Map<string, number>();
-    profiles.forEach((p) => {
+    filteredProfiles.forEach((p) => {
       if (!p.created_at) return;
       const date = new Date(p.created_at);
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -255,7 +352,7 @@ function AdminDashboard() {
       });
       return { date: label, users: cumulative };
     });
-  }, [profiles]);
+  }, [filteredProfiles]);
 
   // Cumulative Content Growth (Task 8)
   const contentGrowthData = useMemo(() => {
@@ -277,14 +374,14 @@ function AdminDashboard() {
       });
       return { date: label, content: cumulative };
     });
-  }, [videos]);
+  }, [filteredVideos]);
 
   // Top Creators by total views (Task 8)
   const topCreatorsData = useMemo(() => {
     const creatorMap = new Map<string, { username: string; views: number; videos: number }>();
-    videos.forEach((v) => {
+    filteredVideos.forEach((v) => {
       const creatorId = v.created_by;
-      const profile = profiles.find((p) => p.id === creatorId);
+      const profile = filteredProfiles.find((p) => p.id === creatorId);
       const username = profile?.username || "Platform Creator";
       const existing = creatorMap.get(username) ?? { username, views: 0, videos: 0 };
       existing.views += v.last_view_count ?? 0;
@@ -294,28 +391,32 @@ function AdminDashboard() {
     return Array.from(creatorMap.values())
       .sort((a, b) => b.views - a.views)
       .slice(0, 10);
-  }, [videos, profiles]);
+  }, [filteredVideos, filteredProfiles]);
 
   // Platform Distribution
   const platformData = useMemo(() => {
+    const totalCount = filteredVideos.length || 1;
     return PLATFORMS.map((p) => {
-      const platformVideos = videos.filter((v) => v.platform === p);
+      const platformVideos = filteredVideos.filter((v) => v.platform === p);
       const views = platformVideos.reduce((sum, v) => sum + (v.last_view_count ?? 0), 0);
+      const count = platformVideos.length;
+      const percentage = Math.round((count / totalCount) * 100);
       return {
         platform: PLATFORM_LABELS[p],
         key: p as Platform,
-        count: platformVideos.length,
+        count,
         views,
+        percentage,
       };
     }).filter((d) => d.count > 0);
-  }, [videos]);
+  }, [filteredVideos]);
 
-  // Unified dynamic Activity Feed list (Task 9)
+  // Unified dynamic Activity Feed list (Task 9 & Part 6)
   const activityFeedEvents = useMemo(() => {
     const events: ActivityEvent[] = [];
 
     // 1. Registrations
-    profiles.slice(0, 10).forEach((p) => {
+    filteredProfiles.slice(0, 15).forEach((p) => {
       events.push({
         id: `reg-${p.id}`,
         type: "user_joined",
@@ -328,7 +429,7 @@ function AdminDashboard() {
     });
 
     // 2. Content Uploads
-    videos.slice(0, 15).forEach((v) => {
+    filteredVideos.slice(0, 20).forEach((v) => {
       const groupName = groups.find((g) => g.id === v.group_id)?.team_name || "a team";
       events.push({
         id: `vid-${v.id}`,
@@ -342,9 +443,9 @@ function AdminDashboard() {
     });
 
     // 3. Stats Refreshes
-    videos
+    filteredVideos
       .filter((v) => v.last_fetched_at)
-      .slice(0, 10)
+      .slice(0, 15)
       .forEach((v) => {
         events.push({
           id: `ref-${v.id}`,
@@ -360,7 +461,7 @@ function AdminDashboard() {
       });
 
     // 4. Groups Created
-    groups.slice(0, 5).forEach((g) => {
+    filteredGroups.slice(0, 10).forEach((g) => {
       events.push({
         id: `group-${g.id}`,
         type: "group_created",
@@ -373,10 +474,19 @@ function AdminDashboard() {
     });
 
     // Sort all chronologically descending
-    return events
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 30);
-  }, [profiles, videos, groups]);
+    const sorted = events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    // Apply Filter (uploads, syncs, team_creation, member_joined, admin_actions)
+    return sorted.filter((e) => {
+      if (activityFilter === "all") return true;
+      if (activityFilter === "uploads") return e.type === "content_added";
+      if (activityFilter === "syncs") return e.type === "content_refreshed";
+      if (activityFilter === "team_creation") return e.type === "group_created";
+      if (activityFilter === "member_joined") return e.type === "user_joined";
+      if (activityFilter === "admin_actions") return false; // Admin config changes are local or not logged
+      return true;
+    }).slice(0, 30);
+  }, [filteredProfiles, filteredVideos, filteredGroups, groups, activityFilter]);
 
   // Global Search Engine (Task 5)
   const globalSearchResults = useMemo(() => {
@@ -607,11 +717,70 @@ function AdminDashboard() {
                 </Card>
               </div>
 
+              {/* Contest Scope selectors (Part 2) */}
+              <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Contest Scope:</span>
+                  <Select value={scopeType} onValueChange={(val: any) => {
+                    setScopeType(val);
+                    setScopeTeamId("all");
+                    setScopeCreatorId("all");
+                  }}>
+                    <SelectTrigger className="w-44 h-9 text-xs">
+                      <SelectValue placeholder="All Contest" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Contest</SelectItem>
+                      <SelectItem value="team">Specific Team</SelectItem>
+                      <SelectItem value="creator">Specific Creator</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {scopeType === "team" && (
+                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-1 duration-200">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Select Team:</span>
+                    <Select value={scopeTeamId} onValueChange={setScopeTeamId}>
+                      <SelectTrigger className="w-56 h-9 text-xs">
+                        <SelectValue placeholder="Select Team" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Teams</SelectItem>
+                        {groups.map((g) => (
+                          <SelectItem key={g.id} value={g.id}>
+                            {g.team_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {scopeType === "creator" && (
+                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-1 duration-200">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Select Creator:</span>
+                    <Select value={scopeCreatorId} onValueChange={setScopeCreatorId}>
+                      <SelectTrigger className="w-56 h-9 text-xs">
+                        <SelectValue placeholder="Select Creator" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Creators</SelectItem>
+                        {profiles.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.username || p.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
               {/* Contest-wide statistics cards */}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                <StatCard label="Total Users" value={profiles.length.toLocaleString()} icon={<Users className="size-4" />} />
-                <StatCard label="Total Teams" value={groups.length.toLocaleString()} icon={<Layers className="size-4 text-accent" />} />
-                <StatCard label="Total Videos" value={videos.length.toLocaleString()} icon={<Video className="size-4 text-success" />} />
+                <StatCard label="Total Users" value={filteredProfiles.length.toLocaleString()} icon={<Users className="size-4" />} />
+                <StatCard label="Total Teams" value={filteredGroups.length.toLocaleString()} icon={<Layers className="size-4 text-accent" />} />
+                <StatCard label="Total Videos" value={filteredVideos.length.toLocaleString()} icon={<Video className="size-4 text-success" />} />
                 <StatCard label="Total Views" value={totals.views.toLocaleString()} icon={<Eye className="size-4" />} />
                 <StatCard label="Total Likes" value={totals.likes.toLocaleString()} icon={<Heart className="size-4 text-rose-500" />} />
                 <StatCard label="Total Comments" value={totals.comments.toLocaleString()} icon={<MessageSquare className="size-4 text-primary" />} />
@@ -620,78 +789,84 @@ function AdminDashboard() {
               {/* Two Core Charts */}
               <div className="grid gap-6 md:grid-cols-2">
                 {/* Platform Distribution */}
-                <Card className="p-5 bg-card border border-border">
+                <Card className="p-5 bg-card border border-border flex flex-col justify-between">
                   <CardHeader className="p-0 mb-4">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
                       <Layers className="size-4 text-accent" /> Platform Distribution
                     </CardTitle>
                   </CardHeader>
-                  <div className="h-64">
+                  <div className="h-64 flex-1">
                     {platformData.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No platform distribution data.</div>
                     ) : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={platformData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={45}
-                            outerRadius={65}
-                            paddingAngle={3}
-                            dataKey="count"
-                            nameKey="platform"
-                          >
-                            {platformData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{
-                              background: "var(--color-popover)",
-                              border: "1px solid var(--color-border)",
-                              borderRadius: 8,
-                              fontSize: 11,
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
+                      <div className="h-full flex flex-col justify-between">
+                        <ResponsiveContainer width="100%" height="80%">
+                          <PieChart>
+                            <Pie
+                              data={platformData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={45}
+                              outerRadius={65}
+                              paddingAngle={3}
+                              dataKey="count"
+                              nameKey="platform"
+                            >
+                              {platformData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip content={<CustomPieTooltip />} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-2 text-[10px] text-muted-foreground">
+                          {platformData.map((d, index) => (
+                            <div key={d.key} className="flex items-center gap-1">
+                              <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
+                              <span className="font-semibold">{d.platform} ({d.percentage}%)</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </Card>
 
                 {/* Views by Platform */}
-                <Card className="p-5 bg-card border border-border">
+                <Card className="p-5 bg-card border border-border flex flex-col">
                   <CardHeader className="p-0 mb-4">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
                       <BarChart3 className="size-4 text-success" /> Views by Platform
                     </CardTitle>
                   </CardHeader>
-                  <div className="h-64">
+                  <div className="h-64 flex-1">
                     {platformData.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No view statistics yet.</div>
                     ) : (
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={platformData}>
+                        <BarChart data={platformData} margin={{ top: 20, right: 10, left: -10, bottom: 0 }}>
                           <defs>
-                            <linearGradient id="adminBarGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.9}/>
-                              <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
+                            <linearGradient id="orangeBarGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#ff8c42" stopOpacity={0.9}/>
+                              <stop offset="95%" stopColor="#ff6b35" stopOpacity={0.3}/>
                             </linearGradient>
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                          <XAxis dataKey="platform" stroke="var(--color-muted-foreground)" fontSize={10} />
-                          <YAxis stroke="var(--color-muted-foreground)" fontSize={10} tickFormatter={(v) => formatCount(v)} />
-                          <Tooltip
-                            contentStyle={{
-                              background: "var(--color-popover)",
-                              border: "1px solid var(--color-border)",
-                              borderRadius: 8,
-                              fontSize: 11,
+                          <XAxis dataKey="platform" stroke="var(--color-muted-foreground)" fontSize={10} tickLine={true} axisLine={true} />
+                          <YAxis stroke="var(--color-muted-foreground)" fontSize={10} tickFormatter={(v) => formatCount(v)} tickLine={true} axisLine={true} />
+                          <Tooltip content={<CustomTooltip />} />
+                          <Bar
+                            dataKey="views"
+                            fill="url(#orangeBarGradient)"
+                            radius={[6, 6, 0, 0]}
+                            isAnimationActive={true}
+                            label={{
+                              position: 'top',
+                              fontSize: 10,
+                              fill: 'var(--color-muted-foreground)',
+                              formatter: (v: any) => v === 0 ? "0" : ""
                             }}
-                            formatter={(v: any) => [`${v.toLocaleString()} views`]}
                           />
-                          <Bar dataKey="views" fill="url(#adminBarGradient)" radius={[6, 6, 0, 0]} isAnimationActive={true} />
                         </BarChart>
                       </ResponsiveContainer>
                     )}
@@ -699,79 +874,134 @@ function AdminDashboard() {
                 </Card>
               </div>
 
-              {/* Tables: Top Teams & Recent Activity */}
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Top Teams Standings Table */}
-                <Card className="shadow-sm border border-border bg-card">
-                  <CardHeader className="p-5">
-                    <CardTitle className="text-base font-bold flex items-center gap-2">
-                      <Trophy className="size-5 text-amber-500" /> Top Teams
-                    </CardTitle>
-                    <CardDescription className="text-xs">Highest performing collaboration groups</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <Table>
-                      <TableHeader>
+              {/* Expanded Leaderboard Standings Table (Part 5 & Part 7) */}
+              <Card className="shadow-sm border border-border bg-card">
+                <CardHeader className="p-5">
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <Trophy className="size-5 text-amber-500" /> Leaderboard Standings
+                  </CardTitle>
+                  <CardDescription className="text-xs">Comprehensive rank metrics across contest groups</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0 overflow-x-auto">
+                  <Table className="min-w-[800px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-24 text-center text-xs">Rank</TableHead>
+                        <TableHead className="text-xs">Team</TableHead>
+                        <TableHead className="text-center text-xs">Members</TableHead>
+                        <TableHead className="text-center text-xs">Videos</TableHead>
+                        <TableHead className="text-right text-xs">Views</TableHead>
+                        <TableHead className="text-right text-xs">Likes</TableHead>
+                        <TableHead className="text-right text-xs">Comments</TableHead>
+                        <TableHead className="text-center text-xs">Engagement</TableHead>
+                        <TableHead className="text-center text-xs">Last Upload</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {topTeams.length === 0 ? (
                         <TableRow>
-                          <TableHead className="w-16 text-center text-xs">Rank</TableHead>
-                          <TableHead className="text-xs">Team</TableHead>
-                          <TableHead className="text-right text-xs">Videos</TableHead>
-                          <TableHead className="text-right text-xs">Views</TableHead>
+                          <TableCell colSpan={9} className="h-32 text-center text-xs text-muted-foreground">
+                            <div className="flex flex-col items-center justify-center space-y-2 py-4">
+                              <Trophy className="size-6 text-muted-foreground animate-pulse" />
+                              <p className="font-semibold">No matching content found.</p>
+                              <p className="text-xs">Try changing your filters.</p>
+                            </div>
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {topTeams.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={4} className="h-24 text-center text-xs text-muted-foreground">
-                              No team rankings available
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          topTeams.map((team, idx) => (
-                            <TableRow key={team.group_id} className="text-xs">
-                              <TableCell className="text-center font-bold">{idx + 1}</TableCell>
-                              <TableCell className="font-semibold">{team.team_name || "Collaboration Group"}</TableCell>
-                              <TableCell className="text-right">{team.video_count || 0}</TableCell>
-                              <TableCell className="text-right font-bold">{team.total_views?.toLocaleString() || 0}</TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
+                      ) : (
+                        topTeams.map((team, idx) => {
+                          const rank = idx + 1;
+                          const group = groups.find(g => g.id === team.group_id);
+                          const membersCount = group?.member_names?.length || 0;
+                          
+                          const teamVideos = videos.filter(v => v.group_id === team.group_id);
+                          const lastUploadDate = teamVideos.length > 0
+                            ? new Date(Math.max(...teamVideos.map(v => new Date(v.created_at).getTime()))).toLocaleDateString()
+                            : "—";
 
-                {/* Recent Activity feed */}
-                <Card className="shadow-sm border border-border bg-card">
-                  <CardHeader className="p-5">
+                          const engagement = team.total_views > 0
+                            ? (((team.total_likes ?? 0) + (team.total_comments ?? 0)) / team.total_views * 100).toFixed(2) + "%"
+                            : "0.00%";
+
+                          return (
+                            <TableRow key={team.group_id} className="text-xs">
+                              <TableCell className="text-center font-bold flex justify-center py-3">
+                                {rank === 1 ? (
+                                  <Badge className="bg-amber-500/15 text-amber-500 border-amber-500/30 gap-1 flex items-center justify-center font-bold px-1.5 py-0.5"><Trophy className="size-3 fill-amber-500" /> Gold</Badge>
+                                ) : rank === 2 ? (
+                                  <Badge className="bg-slate-300/15 text-slate-300 border-slate-300/30 gap-1 flex items-center justify-center font-bold px-1.5 py-0.5"><Trophy className="size-3 fill-slate-300" /> Silver</Badge>
+                                ) : rank === 3 ? (
+                                  <Badge className="bg-amber-700/15 text-amber-700 border-amber-700/30 gap-1 flex items-center justify-center font-bold px-1.5 py-0.5"><Trophy className="size-3 fill-amber-700" /> Bronze</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground">#{rank}</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="font-semibold text-foreground">{team.team_name || "Collaboration Group"}</TableCell>
+                              <TableCell className="text-center">{membersCount}</TableCell>
+                              <TableCell className="text-center">{team.video_count || 0}</TableCell>
+                              <TableCell className="text-right font-bold text-foreground">{team.total_views?.toLocaleString() || 0}</TableCell>
+                              <TableCell className="text-right text-rose-500">{team.total_likes?.toLocaleString() || 0}</TableCell>
+                              <TableCell className="text-right text-primary">{team.total_comments?.toLocaleString() || 0}</TableCell>
+                              <TableCell className="text-center font-medium text-emerald-500">{engagement}</TableCell>
+                              <TableCell className="text-center text-muted-foreground">{lastUploadDate}</TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+
+              {/* Recent Activity feed with Filter (Part 6 & Part 7) */}
+              <Card className="shadow-sm border border-border bg-card">
+                <CardHeader className="p-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                  <div>
                     <CardTitle className="text-base font-bold flex items-center gap-2">
                       <Activity className="size-5 text-primary" /> Recent Activity
                     </CardTitle>
                     <CardDescription className="text-xs font-medium">Recent platform timeline notifications</CardDescription>
-                  </CardHeader>
-                  <CardContent className="h-[280px] overflow-y-auto pr-1">
-                    {activityFeedEvents.length === 0 ? (
-                      <p className="text-xs text-muted-foreground py-12 text-center">No recent activity logs.</p>
-                    ) : (
-                      <div className="space-y-4 p-4 pt-0">
-                        {activityFeedEvents.slice(0, 10).map((event) => {
-                          const date = new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                          return (
-                            <div key={event.id} className="flex gap-3 text-xs border-l border-border pl-3 pb-3 relative">
-                              <span className="absolute -left-1.5 top-0.5 size-3 rounded-full bg-primary/20 border border-primary shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-foreground truncate">{event.title}</p>
-                                <p className="text-muted-foreground text-[10px] mt-0.5">{event.description}</p>
-                              </div>
-                              <span className="text-[9px] text-muted-foreground shrink-0">{date}</span>
+                  </div>
+                  <Select value={activityFilter} onValueChange={setActivityFilter}>
+                    <SelectTrigger className="w-44 h-8 text-xs bg-background">
+                      <SelectValue placeholder="All Activities" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Activities</SelectItem>
+                      <SelectItem value="uploads">Uploads</SelectItem>
+                      <SelectItem value="syncs">Syncs</SelectItem>
+                      <SelectItem value="team_creation">Team Creation</SelectItem>
+                      <SelectItem value="member_joined">Member Joined</SelectItem>
+                      <SelectItem value="admin_actions">Admin Actions</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </CardHeader>
+                <CardContent className="h-[320px] overflow-y-auto pr-1">
+                  {activityFeedEvents.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center space-y-2 py-16">
+                      <Activity className="size-6 text-muted-foreground animate-pulse" />
+                      <p className="font-semibold text-xs">No matching content found.</p>
+                      <p className="text-[10px] text-muted-foreground">Try changing your filters.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 p-4 pt-0">
+                      {activityFeedEvents.slice(0, 15).map((event) => {
+                        const date = new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        return (
+                          <div key={event.id} className="flex gap-3 text-xs border-l border-border pl-3 pb-3 relative">
+                            <span className="absolute -left-1.5 top-0.5 size-3 rounded-full bg-primary/20 border border-primary shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-foreground truncate">{event.title}</p>
+                              <p className="text-muted-foreground text-[10px] mt-0.5">{event.description}</p>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+                            <span className="text-[9px] text-muted-foreground shrink-0">{date}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           )}
 

@@ -83,10 +83,9 @@ function AdminVideoLinksPage() {
 
   // States
   const [search, setSearch] = useState("");
+  const [teamFilter, setTeamFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState<"all" | Platform>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [viewsFilter, setViewsFilter] = useState("all");
-  const [likesFilter, setLikesFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [sortField, setSortField] = useState("newest");
   const [page, setPage] = useState(1);
@@ -142,11 +141,22 @@ function AdminVideoLinksPage() {
     },
   });
 
-  // Filter & Search computation (Task 4 & 5 & 6)
+  // Unique teams list derived dynamically (Part 1 & 8)
+  const uniqueTeams = useMemo(() => {
+    const teamsMap = new Map<string, string>();
+    videosData.forEach((v) => {
+      if (v.group_id && v.group?.team_name) {
+        teamsMap.set(v.group_id, v.group.team_name);
+      }
+    });
+    return Array.from(teamsMap.entries()).map(([id, name]) => ({ id, name }));
+  }, [videosData]);
+
+  // Filter & Search computation (Part 1)
   const filteredVideos = useMemo(() => {
     return videosData
       .filter((v) => {
-        // Search
+        // Search across title, url, creator name, email, team name
         if (search.trim()) {
           const keyword = search.toLowerCase();
           const creator = profiles.find((p) => p.id === v.created_by);
@@ -154,61 +164,45 @@ function AdminVideoLinksPage() {
             (v.title ?? "").toLowerCase().includes(keyword) ||
             v.url.toLowerCase().includes(keyword) ||
             (creator?.username ?? "").toLowerCase().includes(keyword) ||
+            (creator?.email ?? "").toLowerCase().includes(keyword) ||
             (v.group?.team_name ?? "").toLowerCase().includes(keyword);
           if (!matches) return false;
         }
 
+        // Team filter
+        if (teamFilter !== "all" && v.group_id !== teamFilter) return false;
+
         // Platform
         if (platformFilter !== "all" && v.platform !== platformFilter) return false;
 
-        // Status and soft-delete filtering: If filtering for deleted, show deleted. Else, show active ones.
+        // Status filter: success, pending, failed, deleted
         if (statusFilter === "deleted") {
           if (!v.deleted_at) return false;
         } else {
           if (v.deleted_at) return false;
           if (statusFilter !== "all") {
             const match =
-              (statusFilter === "pending" && (v.sync_status === "idle" || v.sync_status === "pending")) ||
-              v.sync_status === statusFilter ||
-              (statusFilter === "unsupported" && v.sync_status === "error" && v.api_error === "Platform analytics not supported without OAuth") ||
-              (statusFilter === "failed" && v.sync_status === "error" && v.api_error !== "Platform analytics not supported without OAuth");
+              (statusFilter === "pending" && (v.sync_status === "idle" || v.sync_status === "pending" || v.sync_status === "syncing")) ||
+              (statusFilter === "success" && v.sync_status === "success") ||
+              (statusFilter === "failed" && ((v.sync_status as any) === "error" || (v.sync_status as any) === "failed"));
             if (!match) return false;
           }
         }
 
-        // Views range
-        if (viewsFilter !== "all") {
-          const views = v.last_view_count ?? 0;
-          if (viewsFilter === "0-100" && views > 100) return false;
-          if (viewsFilter === "100-10k" && (views <= 100 || views > 10000)) return false;
-          if (viewsFilter === "10k-100k" && (views <= 10000 || views > 100000)) return false;
-          if (viewsFilter === "100k+" && views <= 100000) return false;
-        }
-
-        // Likes range
-        if (likesFilter !== "all") {
-          const likes = v.last_like_count ?? 0;
-          if (likesFilter === "0-10" && likes > 10) return false;
-          if (likesFilter === "10-1k" && (likes <= 10 || likes > 1000)) return false;
-          if (likesFilter === "1k-10k" && (likes <= 1000 || likes > 10000)) return false;
-          if (likesFilter === "10k+" && likes <= 10000) return false;
-        }
-
-        // Date range
+        // Date range: 7days, 30days, 90days
         if (dateFilter !== "all") {
           const createdTime = new Date(v.created_at).getTime();
           const now = Date.now();
           const dayMs = 24 * 60 * 60 * 1000;
 
-          if (dateFilter === "today" && now - createdTime > dayMs) return false;
-          if (dateFilter === "this-week" && now - createdTime > 7 * dayMs) return false;
-          if (dateFilter === "this-month" && now - createdTime > 30 * dayMs) return false;
+          if (dateFilter === "7days" && now - createdTime > 7 * dayMs) return false;
+          if (dateFilter === "30days" && now - createdTime > 30 * dayMs) return false;
+          if (dateFilter === "90days" && now - createdTime > 90 * dayMs) return false;
         }
 
         return true;
       })
       .sort((a, b) => {
-        // Sorting (Task 6)
         if (sortField === "newest") {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         }
@@ -223,7 +217,7 @@ function AdminVideoLinksPage() {
         }
         return 0;
       });
-  }, [videosData, search, platformFilter, statusFilter, viewsFilter, likesFilter, dateFilter, sortField, profiles]);
+  }, [videosData, search, teamFilter, platformFilter, statusFilter, dateFilter, sortField, profiles]);
 
   // Paginated chunk
   const paginatedVideos = useMemo(() => {
@@ -624,14 +618,14 @@ function AdminVideoLinksPage() {
         </Badge>
       </div>
 
-      {/* Advanced Filters Block (Task 6) */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      {/* Combined search/filter toolbar (Part 1 & Part 9) */}
+      <div className="mb-4 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 p-4 bg-card border border-border rounded-xl">
         {/* Search */}
-        <div className="relative lg:col-span-2">
+        <div className="relative col-span-1 sm:col-span-2 lg:col-span-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-9 h-9 text-xs"
-            placeholder="Search title, URL, group, creator..."
+            placeholder="Search title, URL, creator..."
             value={search}
             onChange={(e) => {
               setPage(1);
@@ -640,23 +634,31 @@ function AdminVideoLinksPage() {
           />
         </div>
 
-        {/* Platform */}
+        {/* Team Dropdown */}
         <div>
-          <Select
-            value={platformFilter}
-            onValueChange={(v) => {
-              setPage(1);
-              setPlatformFilter(v as "all" | Platform);
-            }}
-          >
+          <Select value={teamFilter} onValueChange={(v) => { setPage(1); setTeamFilter(v); }}>
             <SelectTrigger className="h-9 text-xs">
-              <div className="flex items-center gap-1.5">
-                <Filter className="size-3 text-muted-foreground" />
-                <SelectValue placeholder="Platform" />
-              </div>
+              <SelectValue placeholder="All Teams" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Platform: All</SelectItem>
+              <SelectItem value="all">All Teams</SelectItem>
+              {uniqueTeams.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Platform Filter */}
+        <div>
+          <Select value={platformFilter} onValueChange={(v) => { setPage(1); setPlatformFilter(v as any); }}>
+            <SelectTrigger className="h-9 text-xs">
+              <SelectValue placeholder="All Platforms" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Platforms</SelectItem>
               {PLATFORMS.map((option) => (
                 <SelectItem key={option} value={option}>
                   {PLATFORM_LABELS[option]}
@@ -666,109 +668,71 @@ function AdminVideoLinksPage() {
           </Select>
         </div>
 
-        {/* Status */}
+        {/* Status Filter */}
         <div>
-          <Select
-            value={statusFilter}
-            onValueChange={(v) => {
-              setPage(1);
-              setStatusFilter(v);
-            }}
-          >
+          <Select value={statusFilter} onValueChange={(v) => { setPage(1); setStatusFilter(v); }}>
             <SelectTrigger className="h-9 text-xs">
-              <div className="flex items-center gap-1.5">
-                <Filter className="size-3 text-muted-foreground" />
-                <SelectValue placeholder="Status" />
-              </div>
+              <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Status: All</SelectItem>
-              <SelectItem value="pending">Status: Pending</SelectItem>
-              <SelectItem value="syncing">Status: Syncing</SelectItem>
-              <SelectItem value="success">Status: Synced</SelectItem>
-              <SelectItem value="unsupported">Status: Statistics Unavailable</SelectItem>
-              <SelectItem value="failed">Status: Sync Failed</SelectItem>
-              <SelectItem value="private">Status: Private</SelectItem>
-              <SelectItem value="deleted">Status: Deleted</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="success">Synced</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="failed">Failed</SelectItem>
+              <SelectItem value="deleted">Deleted</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Views */}
+        {/* Date Filter */}
         <div>
-          <Select value={viewsFilter} onValueChange={(v) => { setPage(1); setViewsFilter(v); }}>
+          <Select value={dateFilter} onValueChange={(v) => { setPage(1); setDateFilter(v); }}>
             <SelectTrigger className="h-9 text-xs">
-              <div className="flex items-center gap-1.5">
-                <Filter className="size-3 text-muted-foreground" />
-                <SelectValue placeholder="Views range" />
-              </div>
+              <SelectValue placeholder="All Time" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Views: All</SelectItem>
-              <SelectItem value="0-100">Views: 0 - 100</SelectItem>
-              <SelectItem value="100-10k">Views: 100 - 10k</SelectItem>
-              <SelectItem value="10k-100k">Views: 10k - 100k</SelectItem>
-              <SelectItem value="100k+">Views: 100k+</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Likes */}
-        <div>
-          <Select value={likesFilter} onValueChange={(v) => { setPage(1); setLikesFilter(v); }}>
-            <SelectTrigger className="h-9 text-xs">
-              <div className="flex items-center gap-1.5">
-                <Filter className="size-3 text-muted-foreground" />
-                <SelectValue placeholder="Likes range" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Likes: All</SelectItem>
-              <SelectItem value="0-10">Likes: 0 - 10</SelectItem>
-              <SelectItem value="10-1k">Likes: 10 - 1k</SelectItem>
-              <SelectItem value="1k-10k">Likes: 1k - 10k</SelectItem>
-              <SelectItem value="10k+">Likes: 10k+</SelectItem>
+              <SelectItem value="all">All Time</SelectItem>
+              <SelectItem value="7days">Last 7 Days</SelectItem>
+              <SelectItem value="30days">Last 30 Days</SelectItem>
+              <SelectItem value="90days">Last 90 Days</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Date Filter */}
-        <div>
-          <Select value={dateFilter} onValueChange={(v) => { setPage(1); setDateFilter(v); }}>
-            <SelectTrigger className="h-9 text-xs">
-              <div className="flex items-center gap-1.5">
-                <Filter className="size-3 text-muted-foreground" />
-                <SelectValue placeholder="Date Linked" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Date Added: All Time</SelectItem>
-              <SelectItem value="today">Date Added: Last 24 Hours</SelectItem>
-              <SelectItem value="this-week">Date Added: Last 7 Days</SelectItem>
-              <SelectItem value="this-month">Date Added: Last 30 Days</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Sorting field */}
-        <div>
+      {/* Sorting & Clear Filters Row */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground">Sort By:</span>
           <Select value={sortField} onValueChange={(v) => setSortField(v)}>
-            <SelectTrigger className="h-9 text-xs">
-              <div className="flex items-center gap-1.5">
-                <ArrowUpDown className="size-3 text-muted-foreground" />
-                <SelectValue placeholder="Sort" />
-              </div>
+            <SelectTrigger className="h-8 w-40 text-xs">
+              <SelectValue placeholder="Sort Order" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="newest">Sort: Newest</SelectItem>
-              <SelectItem value="oldest">Sort: Oldest</SelectItem>
-              <SelectItem value="views-desc">Sort: Most Views</SelectItem>
-              <SelectItem value="likes-desc">Sort: Most Likes</SelectItem>
+              <SelectItem value="newest">Newest first</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="views-desc">Most Views</SelectItem>
+              <SelectItem value="likes-desc">Most Likes</SelectItem>
             </SelectContent>
           </Select>
         </div>
+        {(search.trim() || teamFilter !== "all" || platformFilter !== "all" || statusFilter !== "all" || dateFilter !== "all") && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs text-primary"
+            onClick={() => {
+              setSearch("");
+              setTeamFilter("all");
+              setPlatformFilter("all");
+              setStatusFilter("all");
+              setDateFilter("all");
+              setPage(1);
+            }}
+          >
+            Clear Filters
+          </Button>
+        )}
       </div>
 
       {/* Content Table */}
@@ -807,8 +771,12 @@ function AdminVideoLinksPage() {
               <TableBody>
                 {paginatedVideos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="py-12 text-center text-xs text-muted-foreground">
-                      No matching video links found in content databases.
+                    <TableCell colSpan={10} className="py-16 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <Clapperboard className="size-8 text-muted-foreground animate-pulse" />
+                        <p className="font-semibold text-sm">No matching content found.</p>
+                        <p className="text-xs text-muted-foreground">Try changing your filters.</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
