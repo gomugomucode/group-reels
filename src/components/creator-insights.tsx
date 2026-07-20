@@ -173,29 +173,7 @@ export function CreatorInsights({ videos, metricsHistory, members, allGroups = [
     };
   }, [filteredVideos, members, allGroups]);
 
-  // Chart data 1: Monthly Member Growth (cumulative)
-  const membersJoinedData = useMemo(() => {
-    const listToUse = members?.length > 0 ? members : allCreators;
-    if (!listToUse || listToUse.length === 0) return [];
-    
-    // Sort by registration date
-    const sorted = [...listToUse].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-    const counts: Record<string, number> = {};
-    sorted.forEach((m) => {
-      const date = new Date(m.created_at);
-      const monthStr = date.toLocaleString("default", { month: "short", year: "numeric" });
-      counts[monthStr] = (counts[monthStr] || 0) + 1;
-    });
-    let cumulative = 0;
-    return Object.entries(counts).map(([month, count]) => {
-      cumulative += count;
-      return { month, count: cumulative };
-    });
-  }, [members, allCreators]);
-
-  // Chart data 2: Views by Platform Bar Chart
+  // Chart data 1: Views by Platform Bar Chart
   const viewsByPlatformData = useMemo(() => {
     const views: Record<string, number> = { youtube: 0, tiktok: 0, instagram: 0, facebook: 0 };
     filteredVideos.forEach((v) => {
@@ -207,7 +185,7 @@ export function CreatorInsights({ videos, metricsHistory, members, allGroups = [
     }));
   }, [filteredVideos]);
 
-  // Chart data 3: Platform Distribution Pie Chart
+  // Chart data 2: Platform Distribution Pie Chart
   const platformDistributionData = useMemo(() => {
     const counts: Record<string, number> = {};
     filteredVideos.forEach((v) => {
@@ -217,42 +195,6 @@ export function CreatorInsights({ videos, metricsHistory, members, allGroups = [
       name: PLATFORM_LABELS[name as keyof typeof PLATFORM_LABELS] || name,
       value
     }));
-  }, [filteredVideos]);
-
-  // Chart data 4: Likes vs Views Area Chart
-  const likesVsViewsData = useMemo(() => {
-    return filteredVideos.map((v) => ({
-      title: v.title ? (v.title.length > 15 ? v.title.substring(0, 15) + "..." : v.title) : "Untitled",
-      views: v.last_view_count || 0,
-      likes: v.last_like_count || 0,
-    })).sort((a, b) => b.views - a.views).slice(0, 8);
-  }, [filteredVideos]);
-
-  // Chart data 5: Top 10 Teams Horizontal Bar Chart (Task 4)
-  const topTeamsChartData = useMemo(() => {
-    const teamMap: Record<string, { name: string; views: number }> = {};
-    filteredVideos.forEach((v) => {
-      const teamId = v.group_id || "unassigned";
-      const teamName = getTeamName(v.group_id);
-      if (!teamMap[teamId]) {
-        teamMap[teamId] = { name: teamName, views: 0 };
-      }
-      teamMap[teamId].views += v.last_view_count || 0;
-    });
-    return Object.values(teamMap)
-      .sort((a, b) => b.views - a.views)
-      .slice(0, 10);
-  }, [filteredVideos]);
-
-  // Chart data 6: Top 10 Videos Horizontal Bar Chart (Task 4)
-  const topVideosChartData = useMemo(() => {
-    return [...filteredVideos]
-      .sort((a, b) => (b.last_view_count || 0) - (a.last_view_count || 0))
-      .slice(0, 10)
-      .map((v) => ({
-        name: v.title ? (v.title.length > 15 ? v.title.substring(0, 15) + "..." : v.title) : "Untitled Video",
-        views: v.last_view_count || 0,
-      }));
   }, [filteredVideos]);
 
   // Top Performing videos listing
@@ -482,38 +424,6 @@ export function CreatorInsights({ videos, metricsHistory, members, allGroups = [
 
       {/* ── Visual Charts Suite ───────────────────────────── */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Monthly Member Growth Line Chart */}
-        <Card className="p-5">
-          <CardHeader className="p-0 mb-4">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Users className="size-4 text-primary" /> Monthly Member Growth
-            </CardTitle>
-          </CardHeader>
-          <div className="h-64">
-            {membersJoinedData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No member timeline data.</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={membersJoinedData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                  <XAxis dataKey="month" stroke="var(--color-muted-foreground)" fontSize={10} />
-                  <YAxis stroke="var(--color-muted-foreground)" fontSize={11} allowDecimals={false} />
-                  <ChartTooltip
-                    contentStyle={{
-                      background: "var(--color-popover)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 8,
-                      color: "var(--color-popover-foreground)",
-                      fontSize: 11,
-                    }}
-                  />
-                  <Line type="monotone" dataKey="count" stroke="var(--color-primary)" strokeWidth={2} dot={{ r: 4 }} name="Members" />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </Card>
-
         {/* Platform Distribution Pie Chart */}
         <Card className="p-5">
           <CardHeader className="p-0 mb-4">
@@ -568,6 +478,12 @@ export function CreatorInsights({ videos, metricsHistory, members, allGroups = [
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={viewsByPlatformData}>
+                  <defs>
+                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.9}/>
+                      <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                   <XAxis dataKey="platform" stroke="var(--color-muted-foreground)" fontSize={10} />
                   <YAxis stroke="var(--color-muted-foreground)" fontSize={10} tickFormatter={(v) => formatCount(v)} />
@@ -581,123 +497,7 @@ export function CreatorInsights({ videos, metricsHistory, members, allGroups = [
                     }}
                     formatter={(v: any) => [`${v.toLocaleString()} views`, "Views"]}
                   />
-                  <Bar dataKey="views" fill="var(--color-accent)" radius={[4, 4, 0, 0]}>
-                    {viewsByPlatformData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </Card>
-
-        {/* Likes vs Views Area Chart */}
-        <Card className="p-5">
-          <CardHeader className="p-0 mb-4">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <TrendingUp className="size-4 text-primary" /> Likes vs Views
-            </CardTitle>
-          </CardHeader>
-          <div className="h-64">
-            {likesVsViewsData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No video metrics available.</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={likesVsViewsData}>
-                  <defs>
-                    <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorLikes" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                  <XAxis dataKey="title" stroke="var(--color-muted-foreground)" fontSize={9} />
-                  <YAxis stroke="var(--color-muted-foreground)" fontSize={10} tickFormatter={(v) => formatCount(v)} />
-                  <ChartTooltip
-                    contentStyle={{
-                      background: "var(--color-popover)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 8,
-                      color: "var(--color-popover-foreground)",
-                      fontSize: 11,
-                    }}
-                  />
-                  <Area type="monotone" dataKey="views" stroke="var(--color-primary)" fillOpacity={1} fill="url(#colorViews)" name="Views" />
-                  <Area type="monotone" dataKey="likes" stroke="var(--color-accent)" fillOpacity={1} fill="url(#colorLikes)" name="Likes" />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </Card>
-      </div>
-
-      {/* Horizontal Bar Charts Grid (Task 4) */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Top 10 Teams Horizontal Bar Chart */}
-        <Card className="p-5">
-          <CardHeader className="p-0 mb-4">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Trophy className="size-4 text-amber-500" /> Top 10 Teams
-            </CardTitle>
-          </CardHeader>
-          <div className="h-72">
-            {topTeamsChartData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No standings available.</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topTeamsChartData} layout="vertical" margin={{ left: 10, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-                  <XAxis type="number" stroke="var(--color-muted-foreground)" fontSize={10} tickFormatter={(v) => formatCount(v)} />
-                  <YAxis dataKey="name" type="category" stroke="var(--color-muted-foreground)" fontSize={9} width={90} />
-                  <ChartTooltip
-                    contentStyle={{
-                      background: "var(--color-popover)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 8,
-                      color: "var(--color-popover-foreground)",
-                      fontSize: 11,
-                    }}
-                    formatter={(v: any) => [`${v.toLocaleString()} views`]}
-                  />
-                  <Bar dataKey="views" fill="var(--color-primary)" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </Card>
-
-        {/* Top 10 Videos Horizontal Bar Chart */}
-        <Card className="p-5">
-          <CardHeader className="p-0 mb-4">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Video className="size-4 text-success" /> Top 10 Videos
-            </CardTitle>
-          </CardHeader>
-          <div className="h-72">
-            {topVideosChartData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No videos mapped.</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topVideosChartData} layout="vertical" margin={{ left: 10, right: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-                  <XAxis type="number" stroke="var(--color-muted-foreground)" fontSize={10} tickFormatter={(v) => formatCount(v)} />
-                  <YAxis dataKey="name" type="category" stroke="var(--color-muted-foreground)" fontSize={9} width={90} />
-                  <ChartTooltip
-                    contentStyle={{
-                      background: "var(--color-popover)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 8,
-                      color: "var(--color-popover-foreground)",
-                      fontSize: 11,
-                    }}
-                    formatter={(v: any) => [`${v.toLocaleString()} views`]}
-                  />
-                  <Bar dataKey="views" fill="var(--color-accent)" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="views" fill="url(#barGradient)" radius={[6, 6, 0, 0]} isAnimationActive={true} />
                 </BarChart>
               </ResponsiveContainer>
             )}
